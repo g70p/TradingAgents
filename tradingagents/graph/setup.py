@@ -132,6 +132,7 @@ class GraphSetup:
             "Bull Researcher",
             self.conditional_logic.should_continue_debate,
             {
+                "Bull Researcher": "Bull Researcher",
                 "Bear Researcher": "Bear Researcher",
                 "Research Manager": "Research Manager",
             },
