@@ -553,7 +553,9 @@ def _run_analysis_standalone(selections: dict, config: dict) -> None:
             asset_type=selections["asset_type"],
         )
     except Exception as e:
+        import traceback
         console.print(f"\n[red]❌ Erro: {e}[/red]")
+        console.print(f"[dim]{traceback.format_exc()}[/dim]")
         return
 
     console.print(f"\n[bold cyan]Análise Concluída![/bold cyan]")
