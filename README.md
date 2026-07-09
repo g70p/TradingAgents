@@ -41,17 +41,96 @@ fontes de dados e arquitectura de agentes diferentes.
 
 ---
 
-## ⚠️ Avisos Legais
+## ⚠️ Avisos Legais e Isenção de Responsabilidade
 
-**Este software é experimental e para fins educativos.**
+**LEIA ATENTAMENTE ANTES DE USAR ESTE SOFTWARE.**
 
-- ❌ **Não é aconselhamento financeiro.** Nenhum agente LLM substitui um consultor financeiro certificado.
-- ❌ **Não garante rentabilidade.** O desempenho passado não é indicativo de resultados futuros.
-- ⚠️ **Contém bugs.** Este é um trabalho em progresso contínuo. Assume-se que podes perder dinheiro.
-- ⚠️ **APIs de terceiros.** Este software depende de Yahoo Finance, Google News, ECB, DeepSeek e outros. A disponibilidade não é garantida.
-- 🔒 **Não partilhes chaves API.** As tuas chaves (.env) nunca devem ser commitadas.
+### 1. Não é Aconselhamento Financeiro
 
-**Ao usar este software, assumes todos os riscos. Os autores não se responsabilizam por perdas financeiras.**
+Este software é disponibilizado **exclusivamente para fins educativos, de investigação e estudo**. 
+Nada neste software constitui aconselhamento financeiro, recomendação de investimento, 
+solicitação ou oferta de compra ou venda de quaisquer instrumentos financeiros.
+
+As análises, relatórios e decisões geradas pelos agentes LLM são **simulações automáticas** 
+produzidas por modelos de inteligência artificial. Não refletem a opinião de analistas 
+financeiros certificados, consultores de investimento ou quaisquer profissionais 
+credenciados junto da CMVM, SEC, FCA ou qualquer outro regulador.
+
+**Nunca tomes decisões financeiras baseadas exclusivamente em outputs de IA.**
+
+### 2. Risco de Perda Financeira Significativa
+
+Investir e negociar nos mercados financeiros envolve **risco substancial de perda**.
+Podes perder **todo o capital investido** e potencialmente mais do que investiste
+(no caso de produtos alavancados, futuros, opções ou CFDs).
+
+- ❌ **Não invistas dinheiro que não possas perder.**
+- ❌ **Não uses dinheiro destinado a necessidades básicas, saúde, educação ou reforma.**
+- ❌ **Não invistas com base em empréstimos ou crédito.**
+- ❌ **O desempenho passado não garante resultados futuros.**
+
+### 3. Resultados Não Garantidos
+
+Os resultados produzidos por este framework podem variar significativamente em função de:
+
+- O modelo LLM utilizado (DeepSeek, OpenAI, Anthropic, etc.)
+- A configuração do sistema (temperatura, número de rondas, agentes selecionados)
+- O período temporal analisado
+- A qualidade e disponibilidade das fontes de dados externas
+- A máquina onde o software é executado (diferentes ambientes podem produzir resultados diferentes)
+- Alterações nas APIs de terceiros (Yahoo Finance, Google News, ECB, etc.)
+
+**Nenhum teste, backtest ou simulação pode garantir rentabilidade futura.** 
+Os mercados são influenciados por fatores imprevisíveis que nenhum modelo de IA 
+pode antecipar completamente.
+
+### 4. Dados de Terceiros
+
+Este software depende de APIs e fontes de dados externas que podem:
+
+- Estar indisponíveis ou sofrer interrupções
+- Conter erros, omissões ou atrasos
+- Alterar formatos ou termos de serviço sem aviso prévio
+- Fornecer dados desatualizados ou incompletos
+
+Os autores não garantem a exatidão, integridade ou atualidade de quaisquer dados 
+obtidos através deste software.
+
+### 5. Responsabilidade do Utilizador
+
+Ao utilizar este software, **assumes integralmente todos os riscos** associados às 
+tuas decisões de investimento. Os autores, contribuidores e afiliados **não se 
+responsabilizam por**:
+
+- Perdas financeiras diretas ou indiretas
+- Danos consequentes ou incidentais
+- Lucros cessantes
+- Decisões de trading baseadas nos outputs do software
+- Erros, bugs ou comportamentos inesperados do software
+- Alterações nos mercados que invalidem análises anteriores
+
+### 6. Conformidade Regulatória
+
+Este software não está registado, licenciado ou aprovado por qualquer autoridade 
+reguladora financeira, incluindo mas não limitado a:
+
+- CMVM (Comissão do Mercado de Valores Mobiliários) — Portugal
+- SEC (Securities and Exchange Commission) — EUA
+- FCA (Financial Conduct Authority) — Reino Unido
+- ESMA (European Securities and Markets Authority) — UE
+
+### 7. Sem Garantia
+
+Este software é fornecido **"AS IS"** (tal como está), sem garantias de qualquer tipo, 
+expressas ou implícitas, incluindo mas não limitado a garantias de comercialização, 
+adequação a um fim específico ou não violação.
+
+---
+
+**AO USAR ESTE SOFTWARE, RECONHECES QUE LESTE, COMPREENDESTE E ACEITAS ESTES TERMOS 
+NA SUA TOTALIDADE. SE NÃO CONCORDAS, NÃO UTILIZES O SOFTWARE.**
+
+---
 
 ---
 
