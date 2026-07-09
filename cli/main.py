@@ -359,7 +359,7 @@ def update_display(layout, spinner_text=None, stats_handler=None, start_time=Non
         progress_table.add_row("─" * 20, "─" * 20, "─" * 20, style="dim")
 
     layout["progress"].update(
-        Panel(progress_table, title="Progress", border_style="cyan", padding=(1, 2))
+        Panel(progress_table, title="Progresso", border_style="cyan", padding=(1, 2))
     )
 
     # Messages panel showing recent messages and tool calls
@@ -372,10 +372,10 @@ def update_display(layout, spinner_text=None, stats_handler=None, start_time=Non
         show_lines=True,  # Keep horizontal lines
         padding=(0, 1),  # Add some padding between columns
     )
-    messages_table.add_column("Time", style="cyan", width=8, justify="center")
-    messages_table.add_column("Type", style="green", width=10, justify="center")
+    messages_table.add_column("Hora", style="cyan", width=8, justify="center")
+    messages_table.add_column("Tipo", style="green", width=10, justify="center")
     messages_table.add_column(
-        "Content", style="white", no_wrap=False, ratio=1
+        "Conteúdo", style="white", no_wrap=False, ratio=1
     )  # Make content column expand
 
     # Combine tool calls and messages
@@ -411,7 +411,7 @@ def update_display(layout, spinner_text=None, stats_handler=None, start_time=Non
     layout["messages"].update(
         Panel(
             messages_table,
-            title="Messages & Tools",
+            title="Mensagens & Ferramentas",
             border_style="blue",
             padding=(1, 2),
         )
@@ -422,7 +422,7 @@ def update_display(layout, spinner_text=None, stats_handler=None, start_time=Non
         layout["analysis"].update(
             Panel(
                 Markdown(message_buffer.current_report),
-                title="Current Report",
+                title="Relatório Atual",
                 border_style="green",
                 padding=(1, 2),
             )
@@ -430,8 +430,8 @@ def update_display(layout, spinner_text=None, stats_handler=None, start_time=Non
     else:
         layout["analysis"].update(
             Panel(
-                "[italic]Waiting for analysis report...[/italic]",
-                title="Current Report",
+                "[italic]À espera do relatório de análise...[/italic]",
+                title="Relatório Atual",
                 border_style="green",
                 padding=(1, 2),
             )
@@ -473,7 +473,7 @@ def update_display(layout, spinner_text=None, stats_handler=None, start_time=Non
         stats_parts.append(elapsed_str)
 
     stats_table = Table(show_header=False, box=None, padding=(0, 2), expand=True)
-    stats_table.add_column("Stats", justify="center")
+    stats_table.add_column("Estatísticas", justify="center")
     stats_table.add_row(" | ".join(stats_parts))
 
     layout["footer"].update(Panel(stats_table, border_style="grey50"))
@@ -499,8 +499,8 @@ def get_user_selections():
         welcome_content,
         border_style="green",
         padding=(1, 2),
-        title="Welcome to TradingAgents",
-        subtitle="Multi-Agents LLM Financial Trading Framework",
+        title="Bem-vindo ao TradingAgents",
+        subtitle="Framework Multi-Agente LLM para Trading Financeiro · PT-PT",
     )
     console.print(Align.center(welcome_box))
     console.print()
@@ -755,7 +755,7 @@ def save_report_to_disk(final_state, ticker: str, save_path: Path):
 def display_complete_report(final_state):
     """Display the complete analysis report sequentially (avoids truncation)."""
     console.print()
-    console.print(Rule("Complete Analysis Report", style="bold green"))
+    console.print(Rule("Relatório Completo de Análise", style="bold green"))
 
     # I. Analyst Team Reports
     analysts = []
@@ -768,7 +768,7 @@ def display_complete_report(final_state):
     if final_state.get("fundamentals_report"):
         analysts.append(("Fundamentals Analyst", final_state["fundamentals_report"]))
     if analysts:
-        console.print(Panel("[bold]I. Analyst Team Reports[/bold]", border_style="cyan"))
+        console.print(Panel("[bold]I. Relatórios da Equipa de Analistas[/bold]", border_style="cyan"))
         for title, content in analysts:
             console.print(Panel(Markdown(content), title=title, border_style="blue", padding=(1, 2)))
 
@@ -938,17 +938,17 @@ def classify_message_type(message) -> tuple[str, str | None]:
 
     if isinstance(message, HumanMessage):
         if content and content.strip() == "Continue":
-            return ("Control", content)
-        return ("User", content)
+            return ("Controlo", content)
+        return ("Utilizador", content)
 
     if isinstance(message, ToolMessage):
-        return ("Data", content)
+        return ("Dados", content)
 
     if isinstance(message, AIMessage):
-        return ("Agent", content)
+        return ("Agente", content)
 
     # Fallback for unknown types
-    return ("System", content)
+    return ("Sistema", content)
 
 
 def format_tool_args(args, max_length=80) -> str:
@@ -980,7 +980,7 @@ def _build_run_config(selections: dict, checkpoint: bool | None) -> dict:
     config["google_thinking_level"] = selections.get("google_thinking_level")
     config["openai_reasoning_effort"] = selections.get("openai_reasoning_effort")
     config["anthropic_effort"] = selections.get("anthropic_effort")
-    config["output_language"] = selections.get("output_language", "English")
+    config["output_language"] = selections.get("output_language", "Português")
     # --checkpoint/--no-checkpoint overrides only when explicitly given; omitting
     # the flag preserves TRADINGAGENTS_CHECKPOINT_ENABLED / the default (#976).
     if checkpoint is not None:
