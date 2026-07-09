@@ -210,37 +210,37 @@ class MessageBuffer:
         # Analyst Team Reports - use .get() to handle missing sections
         analyst_sections = ["market_report", "sentiment_report", "news_report", "fundamentals_report"]
         if any(self.report_sections.get(section) for section in analyst_sections):
-            report_parts.append("## Analyst Team Reports")
+            report_parts.append("## Relatórios da Equipa de Analistas")
             if self.report_sections.get("market_report"):
                 report_parts.append(
-                    f"### Market Analysis\n{self.report_sections['market_report']}"
+                    f"### Análise de Mercado\n{self.report_sections['market_report']}"
                 )
             if self.report_sections.get("sentiment_report"):
                 report_parts.append(
-                    f"### Social Sentiment\n{self.report_sections['sentiment_report']}"
+                    f"### Análise de Sentimento\n{self.report_sections['sentiment_report']}"
                 )
             if self.report_sections.get("news_report"):
                 report_parts.append(
-                    f"### News Analysis\n{self.report_sections['news_report']}"
+                    f"### Análise de Notícias\n{self.report_sections['news_report']}"
                 )
             if self.report_sections.get("fundamentals_report"):
                 report_parts.append(
-                    f"### Fundamentals Analysis\n{self.report_sections['fundamentals_report']}"
+                    f"### Análise de Fundamentais\n{self.report_sections['fundamentals_report']}"
                 )
 
         # Research Team Reports
         if self.report_sections.get("investment_plan"):
-            report_parts.append("## Research Team Decision")
+            report_parts.append("## Decisão da Investigação")
             report_parts.append(f"{self.report_sections['investment_plan']}")
 
         # Trading Team Reports
         if self.report_sections.get("trader_investment_plan"):
-            report_parts.append("## Trading Team Plan")
+            report_parts.append("## Plano de Trading")
             report_parts.append(f"{self.report_sections['trader_investment_plan']}")
 
         # Portfolio Management Decision
         if self.report_sections.get("final_trade_decision"):
-            report_parts.append("## Portfolio Management Decision")
+            report_parts.append("## Decisão de Gestão de Portfólio")
             report_parts.append(f"{self.report_sections['final_trade_decision']}")
 
         self.final_report = "\n\n".join(report_parts) if report_parts else None
@@ -487,11 +487,11 @@ def get_user_selections():
 
     # Create welcome box content
     welcome_content = f"{welcome_ascii}\n"
-    welcome_content += "[bold green]TradingAgents: Multi-Agents LLM Financial Trading Framework - CLI[/bold green]\n\n"
-    welcome_content += "[bold]Workflow Steps:[/bold]\n"
-    welcome_content += "I. Analyst Team → II. Research Team → III. Trader → IV. Risk Management → V. Portfolio Management\n\n"
+    welcome_content += "[bold green]TradingAgents: Framework Multi-Agente LLM para Trading Financeiro · CLI[/bold green]\n\n"
+    welcome_content += "[bold]Fluxo de Trabalho:[/bold]\n"
+    welcome_content += "I. Analistas → II. Investigação → III. Trader → IV. Gestão de Risco → V. Gestão de Portfólio\n\n"
     welcome_content += (
-        "[dim]Built by [Tauric Research](https://github.com/TauricResearch)[/dim]"
+        "[dim]Baseado em [Tauric Research](https://github.com/TauricResearch) · fork PT-PT[/dim]"
     )
 
     # Create and center the welcome box
@@ -515,7 +515,7 @@ def get_user_selections():
         box_content = f"[bold]{title}[/bold]\n"
         box_content += f"[dim]{prompt}[/dim]"
         if default:
-            box_content += f"\n[dim]Default: {default}[/dim]"
+            box_content += f"\n[dim]Padrão: {default}[/dim]"
         return Panel(box_content, border_style="blue", padding=(1, 2))
 
     def thinking_value_or_prompt(env_var, config_key, label, box_title, box_body, prompt_fn):
@@ -535,9 +535,9 @@ def get_user_selections():
     # Step 1: Ticker symbol
     console.print(
         create_question_box(
-            "Step 1: Ticker Symbol",
-            "Enter the ticker, with exchange suffix when needed (e.g. SPY, 0700.HK, BTC-USD)",
-            "SPY",
+            "Passo 1: Símbolo do Ticker",
+            "Introduz o ticker, com sufixo da bolsa se necessário (ex: EDP.LS, BTC-USD, GC=F)",
+            "EDP.LS",
         )
     )
     selected_ticker = get_ticker()
@@ -546,16 +546,16 @@ def get_user_selections():
     # "stock" on every run.
     if asset_type.value != "stock":
         console.print(
-            f"[green]Detected asset type:[/green] {asset_type.value}"
+            f"[green]Tipo de ativo detectado:[/green] {asset_type.value}"
         )
 
     # Step 2: Analysis date
     default_date = datetime.datetime.now().strftime("%Y-%m-%d")
     console.print(
         create_question_box(
-            "Step 2: Analysis Date",
-            "Enter the analysis date (YYYY-MM-DD)",
-            default_date,
+            "Passo 2: Data da Análise",
+            "Introduz a data da análise (AAAA-MM-DD)",
+            "",
         )
     )
     analysis_date = get_analysis_date()
@@ -569,7 +569,7 @@ def get_user_selections():
     else:
         console.print(
             create_question_box(
-                "Step 3: Output Language",
+                "Passo 3: Idioma de Saída",
                 "Select the language for analyst reports and final decision"
             )
         )
@@ -578,7 +578,7 @@ def get_user_selections():
     # Step 4: Select analysts
     console.print(
         create_question_box(
-            "Step 4: Analysts Team", "Select your LLM analyst agents for the analysis"
+            "Passo 4: Equipa de Analistas", "Seleciona os analistas LLM para a análise"
         )
     )
     selected_analysts = select_analysts(asset_type)
@@ -603,7 +603,7 @@ def get_user_selections():
     else:
         console.print(
             create_question_box(
-                "Step 5: Research Depth", "Select your research depth level"
+                "Passo 5: Profundidade de Pesquisa", "Seleciona o nível de profundidade"
             )
         )
         selected_research_depth = select_research_depth()
@@ -625,7 +625,7 @@ def get_user_selections():
     else:
         console.print(
             create_question_box(
-                "Step 6: LLM Provider", "Select your LLM provider"
+                "Passo 6: Fornecedor LLM", "Seleciona o fornecedor LLM"
             )
         )
         selected_llm_provider, backend_url = select_llm_provider()
@@ -672,7 +672,7 @@ def get_user_selections():
     else:
         console.print(
             create_question_box(
-                "Step 7: Thinking Agents", "Select your thinking agents for analysis"
+                "Passo 7: Motores de Pensamento", "Seleciona os motores para análise"
             )
         )
         selected_shallow_thinker = select_shallow_thinking_agent(selected_llm_provider)
@@ -695,19 +695,19 @@ def get_user_selections():
     elif provider_lower == "google":
         thinking_level = thinking_value_or_prompt(
             "TRADINGAGENTS_GOOGLE_THINKING_LEVEL", "google_thinking_level",
-            "Gemini thinking mode", "Step 8: Thinking Mode",
+            "Gemini thinking mode", "Passo 8: Modo de Pensamento",
             "Configure Gemini thinking mode", ask_gemini_thinking_config,
         )
     elif provider_lower == "openai":
         reasoning_effort = thinking_value_or_prompt(
             "TRADINGAGENTS_OPENAI_REASONING_EFFORT", "openai_reasoning_effort",
-            "Reasoning effort", "Step 8: Reasoning Effort",
+            "Reasoning effort", "Passo 8: Esforço de Raciocínio",
             "Configure OpenAI reasoning effort level", ask_openai_reasoning_effort,
         )
     elif provider_lower == "anthropic":
         anthropic_effort = thinking_value_or_prompt(
             "TRADINGAGENTS_ANTHROPIC_EFFORT", "anthropic_effort",
-            "Claude effort", "Step 8: Effort Level",
+            "Claude effort", "Passo 8: Nível de Esforço",
             "Configure Claude effort level", ask_anthropic_effort,
         )
 
@@ -783,13 +783,13 @@ def display_complete_report(final_state):
         if debate.get("judge_decision"):
             research.append(("Research Manager", debate["judge_decision"]))
         if research:
-            console.print(Panel("[bold]II. Research Team Decision[/bold]", border_style="magenta"))
+            console.print(Panel("[bold]II. Decisão da Investigação[/bold]", border_style="magenta"))
             for title, content in research:
                 console.print(Panel(Markdown(content), title=title, border_style="blue", padding=(1, 2)))
 
     # III. Trading Team
     if final_state.get("trader_investment_plan"):
-        console.print(Panel("[bold]III. Trading Team Plan[/bold]", border_style="yellow"))
+        console.print(Panel("[bold]III. Plano de Trading[/bold]", border_style="yellow"))
         console.print(Panel(Markdown(final_state["trader_investment_plan"]), title="Trader", border_style="blue", padding=(1, 2)))
 
     # IV. Risk Management Team
@@ -803,14 +803,14 @@ def display_complete_report(final_state):
         if risk.get("neutral_history"):
             risk_reports.append(("Neutral Analyst", risk["neutral_history"]))
         if risk_reports:
-            console.print(Panel("[bold]IV. Risk Management Team Decision[/bold]", border_style="red"))
+            console.print(Panel("[bold]IV. Decisão de Gestão de Risco[/bold]", border_style="red"))
             for title, content in risk_reports:
                 console.print(Panel(Markdown(content), title=title, border_style="blue", padding=(1, 2)))
 
         # V. Portfolio Manager Decision
         if risk.get("judge_decision"):
-            console.print(Panel("[bold]V. Portfolio Manager Decision[/bold]", border_style="green"))
-            console.print(Panel(Markdown(risk["judge_decision"]), title="Portfolio Manager", border_style="blue", padding=(1, 2)))
+            console.print(Panel("[bold]V. Decisão do Gestor de Portfólio[/bold]", border_style="green"))
+            console.print(Panel(Markdown(risk["judge_decision"]), title="Gestor de Portfólio", border_style="blue", padding=(1, 2)))
 
 
 def update_research_team_status(status):
@@ -1206,7 +1206,7 @@ def run_analysis(checkpoint: bool | None = None):
                 if judge and message_buffer.agent_status.get("Portfolio Manager") != "completed":
                     message_buffer.update_agent_status("Portfolio Manager", "in_progress")
                     message_buffer.update_report_section(
-                        "final_trade_decision", f"### Portfolio Manager Decision\n{judge}"
+                        "final_trade_decision", f"### Decisão do Gestor de Portfólio\n{judge}"
                     )
                     message_buffer.update_agent_status("Aggressive Analyst", "completed")
                     message_buffer.update_agent_status("Conservative Analyst", "completed")
