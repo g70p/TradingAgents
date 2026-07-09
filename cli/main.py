@@ -543,7 +543,7 @@ def _run_analysis_standalone(selections: dict, config: dict) -> None:
     graph = TradingAgentsGraph(
         selected_analyst_keys,
         config=config,
-        debug=False,
+        debug=True,
     )
 
     try:
