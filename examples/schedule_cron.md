@@ -29,7 +29,7 @@ cd ~/projects/TradingAgents
 source .venv/bin/activate
 set -a && source .env && set +a
 
-TICKERS=("BCP.LS" "NVDA" "BTC-USD")
+TICKERS=("BCP.LS" "EDP.LS" "BTC-USD")
 DATE=$(date +%Y-%m-%d)
 
 for ticker in "${TICKERS[@]}"; do
