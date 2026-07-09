@@ -181,11 +181,24 @@ def get_instrument_context_from_state(state: Mapping[str, Any]) -> str:
     """
     context = state.get("instrument_context")
     if isinstance(context, str) and context.strip():
-        return context
-    return build_instrument_context(
-        str(state["company_of_interest"]),
-        state.get("asset_type", "stock"),
-    )
+        base = context
+    else:
+        base = build_instrument_context(
+            str(state["company_of_interest"]),
+            state.get("asset_type", "stock"),
+        )
+
+    # Append market session context if available
+    session_ctx = state.get("market_session_context", "")
+    if session_ctx:
+        base += f"\n\n{session_ctx}"
+
+    # Append crypto on-chain data if available
+    crypto_ctx = state.get("crypto_onchain_data", "")
+    if crypto_ctx:
+        base += f"\n\n{crypto_ctx}"
+
+    return base
 
 
 def get_crypto_onchain_context(state: Mapping[str, Any]) -> str:

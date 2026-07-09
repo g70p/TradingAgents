@@ -30,6 +30,7 @@ from tradingagents.agents.utils.agent_utils import (
 from tradingagents.agents.utils.memory import TradingMemoryLog
 from tradingagents.dataflows.config import set_config
 from tradingagents.dataflows.crypto_onchain import get_crypto_onchain_summary
+from tradingagents.dataflows.market_sessions import get_market_context_for_state
 from tradingagents.dataflows.utils import safe_ticker_component
 from tradingagents.default_config import DEFAULT_CONFIG
 from tradingagents.llm_clients import create_llm_client
@@ -404,6 +405,12 @@ class TradingAgentsGraph:
             if onchain_data and "indisponível" not in onchain_data.split("\n")[0].lower():
                 init_agent_state["crypto_onchain_data"] = onchain_data
                 logger.info("Injected crypto on-chain data for %s", company_name)
+
+        # Inject market session context — all agents know if market is open/closed
+        market_context = get_market_context_for_state(company_name, asset_type)
+        if market_context:
+            init_agent_state["market_session_context"] = market_context
+            logger.debug("Injected market session context for %s", company_name)
         args = self.propagator.get_graph_args()
 
         # Inject thread_id so same ticker+date resumes, different date starts fresh.
