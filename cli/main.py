@@ -1169,7 +1169,7 @@ def run_analysis(checkpoint: bool | None = None, quick: bool = False):
     graph = TradingAgentsGraph(
         selected_analyst_keys,
         config=config,
-        debug=False,  # debug stream quebra com 'Bull Researcher' no LangGraph
+        debug=True,
     )
 
     # Initialize message buffer with selected analysts
