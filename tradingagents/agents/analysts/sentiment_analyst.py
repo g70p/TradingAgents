@@ -40,6 +40,7 @@ from tradingagents.agents.utils.structured import (
     invoke_structured_or_freetext,
 )
 from tradingagents.dataflows.google_news import fetch_google_news_sentiment
+from tradingagents.dataflows.news_aggregator import fetch_news_multi_source
 
 
 def _seven_days_back(trade_date: str) -> str:
@@ -67,6 +68,8 @@ def create_sentiment_analyst(llm):
         # always sees something — either real data or a clear placeholder.
         news_block = get_news.func(ticker, start_date, end_date)
         google_block = fetch_google_news_sentiment(ticker, limit=12)
+        # Multi-source aggregator as adicional source (Euronext, Investing, CNBC...)
+        extra_block = fetch_news_multi_source(ticker, limit_per_source=4)
 
         system_message = _build_system_message(
             ticker=ticker,
@@ -74,6 +77,7 @@ def create_sentiment_analyst(llm):
             end_date=end_date,
             news_block=news_block,
             google_block=google_block,
+            extra_block=extra_block,
         )
 
         prompt = ChatPromptTemplate.from_messages(
@@ -122,6 +126,7 @@ def _build_system_message(
     end_date: str,
     news_block: str,
     google_block: str,
+    extra_block: str,
 ) -> str:
     """Assemble the sentiment-analyst system message with structured data blocks."""
     return f"""És um analista de sentimento de mercado financeiro. A tua tarefa é produzir um relatório de sentimento abrangente para {ticker}, cobrindo o período de {start_date} a {end_date}, com base em fontes de dados complementares que já foram recolhidas para ti.
@@ -141,6 +146,13 @@ Cobertura alargada de fontes noticiosas. Inclui imprensa portuguesa e internacio
 <start_of_google_news>
 {google_block}
 <end_of_google_news>
+
+### Fontes Internacionais Agregadas (Euronext, Investing.com, CNBC, MarketWatch)
+Cobertura multi-fonte de mercados globais. Inclui comunicados oficiais de bolsas europeias, imprensa financeira internacional, e análise de mercados.
+
+<start_of_extra>
+{extra_block}
+<end_of_extra>
 
 ## Como analisar estes dados (melhores práticas)
 
