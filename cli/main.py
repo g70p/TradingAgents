@@ -514,19 +514,13 @@ def _show_config() -> None:
         console.print(f"  {k}: [green]{v}[/green]")
 
 
-def _build_quick_selections() -> dict:
-    """Selections a partir do .env — sem prompts."""
+def _build_quick_selections_for(ticker: str) -> dict:
+    """Selections a partir do .env para um ticker específico — sem prompts."""
     from cli.utils import detect_asset_type, normalize_ticker_symbol
-    import sys as _sys
-    args = _sys.argv[_sys.argv.index("analyze") + 1:] if "analyze" in _sys.argv else []
-    ticker = "EDP.LS"
-    for arg in args:
-        if not arg.startswith("-") and arg != "--quick":
-            ticker = arg; break
     ticker = normalize_ticker_symbol(ticker)
     asset_type = detect_asset_type(ticker)
     analysis_date = datetime.datetime.now().strftime("%Y-%m-%d")
-    console.print(f"[green]🚀 Modo rápido:[/green] {ticker} ({asset_type.value}) — {analysis_date}")
+    console.print(f"[green]🚀 {ticker}[/green] ({asset_type.value}) — {analysis_date}")
     return {
         "ticker": ticker, "asset_type": asset_type.value, "analysis_date": analysis_date,
         "analysts": ["market", "social", "news", "fundamentals"],
@@ -663,8 +657,13 @@ def get_user_selections():
         elif choice == "analyze":
             break  # Continuar para o fluxo interativo
         elif choice == "quick":
-            # Modo rápido: usa .env, ticker do argumento ou EDP.LS
-            selections = _build_quick_selections()
+            # Modo rápido: pergunta só o ticker, resto do .env
+            from cli.utils import get_ticker as _get_ticker
+            console.print("\n[bold]Análise Rápida[/bold] — ticker (resto via .env)")
+            ticker = _get_ticker()
+            if ticker is None or ticker.strip() == "":
+                continue
+            selections = _build_quick_selections_for(ticker)
             config = _build_run_config(selections, None)
             _run_analysis_standalone(selections, config)
             console.print()
@@ -1161,8 +1160,14 @@ def _build_run_config(selections: dict, checkpoint: bool | None) -> dict:
 
 def run_analysis(checkpoint: bool | None = None, quick: bool = False):
     if quick:
-        # Modo rápido: ticker do argumento ou EDP.LS, resto do .env
-        selections = _build_quick_selections()
+        # Modo rápido (CLI): ticker do argumento ou EDP.LS
+        import sys as _sys
+        args = _sys.argv[_sys.argv.index("analyze") + 1:] if "analyze" in _sys.argv else []
+        ticker = "EDP.LS"
+        for arg in args:
+            if not arg.startswith("-") and arg != "--quick":
+                ticker = arg; break
+        selections = _build_quick_selections_for(ticker)
     else:
         selections = get_user_selections()
 
