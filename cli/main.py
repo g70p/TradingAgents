@@ -543,10 +543,8 @@ def _run_analysis_standalone(selections: dict, config: dict) -> None:
     graph = TradingAgentsGraph(
         selected_analyst_keys,
         config=config,
-        debug=False,  # debug stream quebra com 'Bull Researcher' no LangGraph
+        debug=False,
     )
-    message_buffer.init_for_analysis(selected_analyst_keys)
-    start_time = time.time()
 
     try:
         final_state, decision = graph.propagate(
