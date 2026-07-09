@@ -547,6 +547,7 @@ def _run_analysis_standalone(selections: dict, config: dict) -> None:
     )
 
     try:
+        console.print(f"[dim]A analisar... (pode demorar 2-3 min)[/dim]")
         final_state, decision = graph.propagate(
             selections["ticker"],
             selections["analysis_date"],
