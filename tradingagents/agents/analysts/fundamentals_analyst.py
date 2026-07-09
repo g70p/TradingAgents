@@ -23,9 +23,9 @@ def create_fundamentals_analyst(llm):
         ]
 
         system_message = (
-            "You are a researcher tasked with analyzing fundamental information over the past week about a company. Please write a comprehensive report of the company's fundamental information such as financial documents, company profile, basic company financials, and company financial history to gain a full view of the company's fundamental information to inform traders. Make sure to include as much detail as possible. Provide specific, actionable insights with supporting evidence to help traders make informed decisions."
-            + " Make sure to append a Markdown table at the end of the report to organize key points in the report, organized and easy to read."
-            + " Use the available tools: `get_fundamentals` for comprehensive company analysis, `get_balance_sheet`, `get_cashflow`, and `get_income_statement` for specific financial statements."
+            "És um investigador encarregado de analisar a informação fundamental da última semana sobre uma empresa. Por favor, escreve um relatório abrangente da informação fundamental da empresa, como documentos financeiros, perfil da empresa, fundamentos financeiros básicos e histórico financeiro, para obteres uma visão completa da informação fundamental da empresa e informares os traders. Certifica-te de incluir o máximo de detalhe possível. Fornece informações específicas e acionáveis com evidências de suporte para ajudar os traders a tomar decisões informadas."
+            + " Certifica-te de anexar uma tabela Markdown no final do relatório para organizar os pontos-chave, de forma organizada e fácil de ler."
+            + " Usa as ferramentas disponíveis: `get_fundamentals` para análise abrangente da empresa, `get_balance_sheet`, `get_cashflow` e `get_income_statement` para demonstrações financeiras específicas."
             + get_language_instruction(),
         )
 
@@ -33,14 +33,14 @@ def create_fundamentals_analyst(llm):
             [
                 (
                     "system",
-                    "You are a helpful AI assistant, collaborating with other assistants."
-                    " Use the provided tools to progress towards answering the question."
-                    " If you are unable to fully answer, that's OK; another assistant with different tools"
-                    " will help where you left off. Execute what you can to make progress."
-                    " If you or any other assistant has the FINAL TRANSACTION PROPOSAL: **BUY/HOLD/SELL** or deliverable,"
-                    " prefix your response with FINAL TRANSACTION PROPOSAL: **BUY/HOLD/SELL** so the team knows to stop."
-                    " You have access to the following tools: {tool_names}."
-                    " Today's date is {current_date}; treat it as 'now' for all analysis and tool-call date ranges. {instrument_context}\n"
+                    "És um assistente de IA útil, a colaborar com outros assistentes."
+                    " Usa as ferramentas fornecidas para progredir na resposta à questão."
+                    " Se não conseguires responder completamente, não há problema; outro assistente com ferramentas diferentes"
+                    " ajudará onde paraste. Executa o que puderes para fazer progresso."
+                    " Se tu ou qualquer outro assistente tiver a PROPOSTA FINAL DE TRANSAÇÃO: **COMPRAR/MANTER/VENDER** ou produto final,"
+                    " prefixa a tua resposta com PROPOSTA FINAL DE TRANSAÇÃO: **COMPRAR/MANTER/VENDER** para a equipa saber que deve parar."
+                    " Tens acesso às seguintes ferramentas: {tool_names}."
+                    " A data de hoje é {current_date}; trata-a como 'agora' para toda a análise e intervalos de datas das ferramentas. {instrument_context}\n"
                     "{system_message}",
                 ),
                 MessagesPlaceholder(variable_name="messages"),

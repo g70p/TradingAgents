@@ -42,7 +42,7 @@ def _coerce_optional_float(value):
 
 
 class PortfolioRating(str, Enum):
-    """5-tier rating used by the Research Manager and Portfolio Manager."""
+    """Escala de 5 níveis usada pelo Gestor de Investigação e Gestor de Portfólio."""
 
     BUY = "Buy"
     OVERWEIGHT = "Overweight"
@@ -52,12 +52,12 @@ class PortfolioRating(str, Enum):
 
 
 class TraderAction(str, Enum):
-    """3-tier transaction direction used by the Trader.
+    """Direção de transação de 3 níveis usada pelo Trader.
 
-    The Trader's job is to translate the Research Manager's investment plan
-    into a concrete transaction proposal: should the desk execute a Buy, a
-    Sell, or sit on Hold this round.  Position sizing and the nuanced
-    Overweight / Underweight calls happen later at the Portfolio Manager.
+    A função do Trader é traduzir o plano de investimento do Gestor de Investigação
+    numa proposta de transação concreta: deve a mesa executar uma Compra, uma
+    Venda, ou Manter nesta ronda. O dimensionamento de posição e as chamadas
+    matizadas de Sobreponderar / Subponderar acontecem depois no Gestor de Portfólio.
     """
 
     BUY = "Buy"
@@ -71,33 +71,33 @@ class TraderAction(str, Enum):
 
 
 class ResearchPlan(BaseModel):
-    """Structured investment plan produced by the Research Manager.
+    """Plano de investimento estruturado produzido pelo Gestor de Investigação.
 
-    Hand-off to the Trader: the recommendation pins the directional view,
-    the rationale captures which side of the bull/bear debate carried the
-    argument, and the strategic actions translate that into concrete
-    instructions the trader can execute against.
+    Passagem ao Trader: a recomendação fixa a visão direcional,
+    a fundamentação captura qual lado do debate touro/urso prevaleceu,
+    e as ações estratégicas traduzem isso em instruções concretas
+    que o trader pode executar.
     """
 
     recommendation: PortfolioRating = Field(
         description=(
-            "The investment recommendation. Exactly one of Buy / Overweight / "
-            "Hold / Underweight / Sell. Reserve Hold for situations where the "
-            "evidence on both sides is genuinely balanced; otherwise commit to "
-            "the side with the stronger arguments."
+            "A recomendação de investimento. Exatamente uma de: Buy / Overweight / "
+            "Hold / Underweight / Sell. Reserva Hold para situações em que as "
+            "evidências de ambos os lados estão genuinamente equilibradas; caso "
+            "contrário, compromete-te com o lado que tiver os argumentos mais fortes."
         ),
     )
     rationale: str = Field(
         description=(
-            "Conversational summary of the key points from both sides of the "
-            "debate, ending with which arguments led to the recommendation. "
-            "Speak naturally, as if to a teammate."
+            "Resumo conversacional dos pontos-chave de ambos os lados do "
+            "debate, terminando com quais argumentos levaram à recomendação. "
+            "Fala naturalmente, como se fosse para um colega de equipa."
         ),
     )
     strategic_actions: str = Field(
         description=(
-            "Concrete steps for the trader to implement the recommendation, "
-            "including position sizing guidance consistent with the rating."
+            "Passos concretos para o trader implementar a recomendação, "
+            "incluindo orientação de dimensionamento de posição consistente com a classificação."
         ),
     )
 
@@ -105,11 +105,11 @@ class ResearchPlan(BaseModel):
 def render_research_plan(plan: ResearchPlan) -> str:
     """Render a ResearchPlan to markdown for storage and the trader's prompt context."""
     return "\n".join([
-        f"**Recommendation**: {plan.recommendation.value}",
+        f"**Recomendação**: {plan.recommendation.value}",
         "",
-        f"**Rationale**: {plan.rationale}",
+        f"**Fundamentação**: {plan.rationale}",
         "",
-        f"**Strategic Actions**: {plan.strategic_actions}",
+        f"**Ações Estratégicas**: {plan.strategic_actions}",
     ])
 
 
@@ -119,34 +119,34 @@ def render_research_plan(plan: ResearchPlan) -> str:
 
 
 class TraderProposal(BaseModel):
-    """Structured transaction proposal produced by the Trader.
+    """Proposta de transação estruturada produzida pelo Trader.
 
-    The trader reads the Research Manager's investment plan and the analyst
-    reports, then turns them into a concrete transaction: what action to
-    take, the reasoning that justifies it, and the practical levels for
-    entry, stop-loss, and sizing.
+    O trader lê o plano de investimento do Gestor de Investigação e os relatórios
+    dos analistas, depois transforma-os numa transação concreta: que ação tomar,
+    o raciocínio que a justifica, e os níveis práticos para
+    entrada, stop-loss e dimensionamento.
     """
 
     action: TraderAction = Field(
-        description="The transaction direction. Exactly one of Buy / Hold / Sell.",
+        description="A direção da transação. Exatamente uma de: Buy / Hold / Sell.",
     )
     reasoning: str = Field(
         description=(
-            "The case for this action, anchored in the analysts' reports and "
-            "the research plan. Two to four sentences."
+            "O caso para esta ação, ancorado nos relatórios dos analistas e "
+            "no plano de investigação. Duas a quatro frases."
         ),
     )
     entry_price: float | None = Field(
         default=None,
-        description="Optional entry price target in the instrument's quote currency.",
+        description="Preço de entrada alvo opcional, na moeda de cotação do instrumento.",
     )
     stop_loss: float | None = Field(
         default=None,
-        description="Optional stop-loss price in the instrument's quote currency.",
+        description="Preço de stop-loss opcional, na moeda de cotação do instrumento.",
     )
     position_sizing: str | None = Field(
         default=None,
-        description="Optional sizing guidance, e.g. '5% of portfolio'.",
+        description="Orientação de dimensionamento opcional, ex.: '5% do portfólio'.",
     )
 
     @field_validator("entry_price", "stop_loss", mode="before")
@@ -163,19 +163,19 @@ def render_trader_proposal(proposal: TraderProposal) -> str:
     and any external code that greps for it.
     """
     parts = [
-        f"**Action**: {proposal.action.value}",
+        f"**Ação**: {proposal.action.value}",
         "",
-        f"**Reasoning**: {proposal.reasoning}",
+        f"**Raciocínio**: {proposal.reasoning}",
     ]
     if proposal.entry_price is not None:
-        parts.extend(["", f"**Entry Price**: {proposal.entry_price}"])
+        parts.extend(["", f"**Preço de Entrada**: {proposal.entry_price}"])
     if proposal.stop_loss is not None:
         parts.extend(["", f"**Stop Loss**: {proposal.stop_loss}"])
     if proposal.position_sizing:
-        parts.extend(["", f"**Position Sizing**: {proposal.position_sizing}"])
+        parts.extend(["", f"**Dimensionamento de Posição**: {proposal.position_sizing}"])
     parts.extend([
         "",
-        f"FINAL TRANSACTION PROPOSAL: **{proposal.action.value.upper()}**",
+        f"PROPOSTA FINAL DE TRANSAÇÃO: **{proposal.action.value.upper()}**",
     ])
     return "\n".join(parts)
 
@@ -186,40 +186,40 @@ def render_trader_proposal(proposal: TraderProposal) -> str:
 
 
 class PortfolioDecision(BaseModel):
-    """Structured output produced by the Portfolio Manager.
+    """Resultado estruturado produzido pelo Gestor de Portfólio.
 
-    The model fills every field as part of its primary LLM call; no separate
-    extraction pass is required. Field descriptions double as the model's
-    output instructions, so the prompt body only needs to convey context and
-    the rating-scale guidance.
+    O modelo preenche cada campo como parte da sua chamada LLM principal; nenhuma
+    passagem de extração separada é necessária. As descrições dos campos funcionam
+    como instruções de saída do modelo, por isso o corpo do prompt só precisa de
+    transmitir contexto e a orientação da escala de classificação.
     """
 
     rating: PortfolioRating = Field(
         description=(
-            "The final position rating. Exactly one of Buy / Overweight / Hold / "
-            "Underweight / Sell, picked based on the analysts' debate."
+            "A classificação final da posição. Exatamente uma de: Buy / Overweight / Hold / "
+            "Underweight / Sell, escolhida com base no debate dos analistas."
         ),
     )
     executive_summary: str = Field(
         description=(
-            "A concise action plan covering entry strategy, position sizing, "
-            "key risk levels, and time horizon. Two to four sentences."
+            "Um plano de ação conciso cobrindo estratégia de entrada, dimensionamento "
+            "de posição, níveis-chave de risco e horizonte temporal. Duas a quatro frases."
         ),
     )
     investment_thesis: str = Field(
         description=(
-            "Detailed reasoning anchored in specific evidence from the analysts' "
-            "debate. If prior lessons are referenced in the prompt context, "
-            "incorporate them; otherwise rely solely on the current analysis."
+            "Raciocínio detalhado ancorado em evidências específicas do debate dos "
+            "analistas. Se lições anteriores forem referenciadas no contexto do prompt, "
+            "incorpora-as; caso contrário, baseia-te apenas na análise atual."
         ),
     )
     price_target: float | None = Field(
         default=None,
-        description="Optional target price in the instrument's quote currency.",
+        description="Preço-alvo opcional, na moeda de cotação do instrumento.",
     )
     time_horizon: str | None = Field(
         default=None,
-        description="Optional recommended holding period, e.g. '3-6 months'.",
+        description="Período de detenção recomendado opcional, ex.: '3-6 meses'.",
     )
 
     @field_validator("price_target", mode="before")
@@ -237,16 +237,16 @@ def render_pm_decision(decision: PortfolioDecision) -> str:
     parsers and the report writers already handle.
     """
     parts = [
-        f"**Rating**: {decision.rating.value}",
+        f"**Classificação**: {decision.rating.value}",
         "",
-        f"**Executive Summary**: {decision.executive_summary}",
+        f"**Sumário Executivo**: {decision.executive_summary}",
         "",
-        f"**Investment Thesis**: {decision.investment_thesis}",
+        f"**Tese de Investimento**: {decision.investment_thesis}",
     ]
     if decision.price_target is not None:
-        parts.extend(["", f"**Price Target**: {decision.price_target}"])
+        parts.extend(["", f"**Preço-Alvo**: {decision.price_target}"])
     if decision.time_horizon:
-        parts.extend(["", f"**Time Horizon**: {decision.time_horizon}"])
+        parts.extend(["", f"**Horizonte Temporal**: {decision.time_horizon}"])
     return "\n".join(parts)
 
 
@@ -256,10 +256,11 @@ def render_pm_decision(decision: PortfolioDecision) -> str:
 
 
 class SentimentBand(str, Enum):
-    """Discrete sentiment direction produced by the Sentiment Analyst.
+    """Direção de sentimento discreta produzida pelo Analista de Sentimento.
 
-    Six tiers keep the signal granular enough to be actionable while remaining
-    small enough for every provider to map reliably from its JSON output.
+    Seis níveis mantêm o sinal granular o suficiente para ser acionável, permanecendo
+    suficientemente pequeno para que cada fornecedor mapeie de forma fiável a partir
+    da sua saída JSON.
     """
 
     BULLISH = "Bullish"
@@ -271,56 +272,56 @@ class SentimentBand(str, Enum):
 
 
 class SentimentReport(BaseModel):
-    """Structured sentiment report produced by the Sentiment Analyst.
+    """Relatório de sentimento estruturado produzido pelo Analista de Sentimento.
 
-    Replaces the previous free-form prose output so downstream consumers
-    (dashboards, audit logs, PDF renderers, other agents) can read
-    ``overall_band`` and ``overall_score`` without maintaining fragile regex
-    fallbacks that drift with every model release. ``narrative`` preserves the
-    rich source-by-source analysis; ``render_sentiment_report`` prepends a
-    deterministic header so the saved report stays human-readable.
+    Substitui a anterior saída em prosa livre para que os consumidores a jusante
+    (dashboards, registos de auditoria, renderizadores PDF, outros agentes) possam ler
+    ``overall_band`` e ``overall_score`` sem manter frágeis fallbacks de regex
+    que variam com cada versão do modelo. ``narrative`` preserva a rica
+    análise fonte a fonte; ``render_sentiment_report`` antepõe um
+    cabeçalho determinístico para que o relatório gravado permaneça legível por humanos.
     """
 
     overall_band: SentimentBand = Field(
         description=(
-            "Overall sentiment direction. Exactly one of: "
+            "Direção geral do sentimento. Exatamente uma de: "
             "Bullish / Mildly Bullish / Neutral / Mixed / Mildly Bearish / Bearish. "
-            "Use Mixed when sources point in clearly different directions. "
-            "Use Neutral only when all sources are genuinely silent or non-committal."
+            "Usa Mixed quando as fontes apontam em direções claramente diferentes. "
+            "Usa Neutral apenas quando todas as fontes estão genuinamente silenciosas ou não comprometidas."
         ),
     )
     overall_score: float = Field(
         ge=0.0,
         le=10.0,
         description=(
-            "Numeric sentiment intensity on a 0–10 scale. "
-            "0 = maximally bearish, 5 = neutral, 10 = maximally bullish. "
-            "Guideline for consistency with overall_band: "
+            "Intensidade numérica do sentimento numa escala de 0–10. "
+            "0 = máximo bearish, 5 = neutro, 10 = máximo bullish. "
+            "Guia para consistência com overall_band: "
             "Bullish ~6.5–10, Mildly Bullish ~5.5–6.4, Neutral/Mixed ~4.5–5.5, "
             "Mildly Bearish ~3.5–4.4, Bearish ~0–3.4. "
-            "Only the 0–10 bounds are enforced."
+            "Apenas os limites 0–10 são aplicados."
         ),
     )
     confidence: Literal["low", "medium", "high"] = Field(
         description=(
-            "Confidence in the assessment based on data quality and sample size. "
-            "Use 'low' when one or more sources returned a placeholder or fewer "
-            "than 5 data points; 'medium' when data is present but sparse; "
-            "'high' when all three sources returned substantive data."
+            "Confiança na avaliação com base na qualidade dos dados e tamanho da amostra. "
+            "Usa 'low' quando uma ou mais fontes devolveram um placeholder ou menos "
+            "de 5 pontos de dados; 'medium' quando os dados estão presentes mas são escassos; "
+            "'high' quando as três fontes devolveram dados substanciais."
         ),
     )
     narrative: str = Field(
         description=(
-            "Full sentiment report covering, in order: "
-            "(1) source-by-source breakdown with specific evidence (cite message "
-            "counts, ratios, notable posts); "
-            "(2) cross-source divergences and alignments; "
-            "(3) dominant narrative themes; "
-            "(4) catalysts and risks surfaced by the data; "
-            "(5) a markdown table summarising key sentiment signals, their "
-            "direction, source, and supporting evidence. "
-            "Keep it informative and substantive: develop each section thoroughly "
-            "with concrete evidence so every point adds new signal for the trader."
+            "Relatório de sentimento completo cobrindo, por ordem: "
+            "(1) análise fonte a fonte com evidências específicas (citar contagens "
+            "de mensagens, rácios, publicações notáveis); "
+            "(2) divergências e alinhamentos entre fontes; "
+            "(3) temas narrativos dominantes; "
+            "(4) catalisadores e riscos revelados pelos dados; "
+            "(5) uma tabela markdown resumindo os principais sinais de sentimento, "
+            "a sua direção, fonte e evidência de suporte. "
+            "Mantém-no informativo e substantivo: desenvolve cada secção minuciosamente "
+            "com evidências concretas para que cada ponto acrescente novo sinal para o trader."
         ),
     )
 
@@ -333,9 +334,9 @@ def render_sentiment_report(report: SentimentReport) -> str:
     without regex.
     """
     return "\n".join([
-        f"**Overall Sentiment:** **{report.overall_band.value}** "
-        f"(Score: {report.overall_score:.1f}/10)",
-        f"**Confidence:** {report.confidence.capitalize()}",
+        f"**Sentimento Geral:** **{report.overall_band.value}** "
+        f"(Pontuação: {report.overall_score:.1f}/10)",
+        f"**Confiança:** {report.confidence.capitalize()}",
         "",
         report.narrative,
     ])

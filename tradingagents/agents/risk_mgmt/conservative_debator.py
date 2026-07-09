@@ -21,24 +21,24 @@ def create_conservative_debator(llm):
 
         trader_decision = state["trader_investment_plan"]
 
-        prompt = f"""As the Conservative Risk Analyst, your primary objective is to protect assets, minimize volatility, and ensure steady, reliable growth. You prioritize stability, security, and risk mitigation, carefully assessing potential losses, economic downturns, and market volatility. When evaluating the trader's decision or plan, critically examine high-risk elements, pointing out where the decision may expose the firm to undue risk and where more cautious alternatives could secure long-term gains. Here is the trader's decision:
+        prompt = f"""Enquanto Analista de Risco Conservador, o teu objetivo principal é proteger ativos, minimizar a volatilidade e garantir um crescimento estável e fiável. Priorizas a estabilidade, segurança e mitigação de risco, avaliando cuidadosamente perdas potenciais, recessões económicas e volatilidade do mercado. Ao avaliar a decisão ou plano do trader, examina criticamente os elementos de alto risco, apontando onde a decisão pode expor a empresa a riscos indevidos e onde alternativas mais cautelosas poderiam garantir ganhos de longo prazo. Aqui está a decisão do trader:
 
 {trader_decision}
 
-Your task is to actively counter the arguments of the Aggressive and Neutral Analysts, highlighting where their views may overlook potential threats or fail to prioritize sustainability. Respond directly to their points, drawing from the following data sources to build a convincing case for a low-risk approach adjustment to the trader's decision:
+A tua tarefa é contrariar ativamente os argumentos dos analistas Agressivo e Neutro, destacando onde as suas visões podem ignorar ameaças potenciais ou não priorizar a sustentabilidade. Responde diretamente aos seus pontos, recorrendo às seguintes fontes de dados para construir um caso convincente para um ajustamento de baixo risco à decisão do trader:
 
 {instrument_context}
-Market Research Report: {market_research_report}
-Social Media Sentiment Report: {sentiment_report}
-Latest World Affairs Report: {news_report}
-Company Fundamentals Report: {fundamentals_report}
-Here is the current conversation history: {history} Here is the last response from the aggressive analyst: {current_aggressive_response} Here is the last response from the neutral analyst: {current_neutral_response}. If there are no responses from the other viewpoints yet, present your own argument based on the available data.
+Relatório de Análise de Mercado: {market_research_report}
+Relatório de Sentimento nas Redes Sociais: {sentiment_report}
+Relatório de Notícias Mundiais: {news_report}
+Relatório de Fundamentais da Empresa: {fundamentals_report}
+Aqui está o histórico atual da conversa: {history} Aqui está a última resposta do analista agressivo: {current_aggressive_response} Aqui está a última resposta do analista neutro: {current_neutral_response}. Se ainda não houver respostas dos outros pontos de vista, apresenta o teu próprio argumento com base nos dados disponíveis.
 
-Engage by questioning their optimism and emphasizing the potential downsides they may have overlooked. Address each of their counterpoints to showcase why a conservative stance is ultimately the safest path for the firm's assets. Focus on debating and critiquing their arguments to demonstrate the strength of a low-risk strategy over their approaches. Output conversationally as if you are speaking without any special formatting.""" + get_language_instruction()
+Participa ativamente, questionando o otimismo deles e enfatizando as potenciais desvantagens que podem ter ignorado. Responde a cada um dos seus contra-argumentos para demonstrar por que uma posição conservadora é, em última análise, o caminho mais seguro para os ativos da empresa. Foca-te em debater e criticar os argumentos deles para demonstrar a força de uma estratégia de baixo risco sobre as suas abordagens. Responde de forma conversacional, como se estivesses a falar, sem formatação especial.""" + get_language_instruction()
 
         response = llm.invoke(prompt)
 
-        argument = f"Conservative Analyst: {response.content}"
+        argument = f"Analista Conservador: {response.content}"
 
         new_risk_debate_state = {
             "history": history + "\n" + argument,

@@ -62,7 +62,7 @@ def get_language_instruction() -> str:
     lang = get_config().get("output_language", "English")
     if lang.strip().lower() == "english":
         return ""
-    return f" Write your entire response in {lang}."
+    return f" Escreve toda a tua resposta em {lang}."
 
 
 def _clean_identity_value(value: Any) -> str | None:
@@ -132,39 +132,39 @@ def build_instrument_context(
     than pattern-matching the price chart to a wrong one (#814).
     """
     is_crypto = asset_type == "crypto"
-    instrument_label = "asset" if is_crypto else "instrument"
+    instrument_label = "ativo" if is_crypto else "instrumento"
     context = (
-        f"The {instrument_label} to analyze is `{ticker}`. "
-        "Use this exact ticker in every tool call, report, and recommendation, "
-        "preserving any exchange suffix (e.g. `.TO`, `.L`, `.HK`, `.T`, `-USD`)."
+        f"O {instrument_label} a analisar é `{ticker}`. "
+        "Usa este ticker exato em cada chamada de ferramenta, relatório e recomendação, "
+        "preservando qualquer sufixo de bolsa (ex.: `.TO`, `.L`, `.HK`, `.T`, `-USD`)."
     )
 
     details = []
     if identity:
         name = identity.get("company_name") or identity.get("name")
         if name:
-            details.append(f"{'Name' if is_crypto else 'Company'}: {name}")
+            details.append(f"{'Nome' if is_crypto else 'Empresa'}: {name}")
         sector, industry = identity.get("sector"), identity.get("industry")
         if sector and industry:
-            details.append(f"Business classification: {sector} / {industry}")
+            details.append(f"Classificação de negócio: {sector} / {industry}")
         elif sector:
-            details.append(f"Sector: {sector}")
+            details.append(f"Setor: {sector}")
         elif industry:
-            details.append(f"Industry: {industry}")
+            details.append(f"Indústria: {industry}")
         if identity.get("exchange"):
-            details.append(f"Exchange: {identity['exchange']}")
+            details.append(f"Bolsa: {identity['exchange']}")
 
     if details:
         context += (
-            f" Resolved identity: {'; '.join(details)}. "
-            "Do not substitute a different company or ticker unless a tool "
-            "result explicitly disproves this resolved identity."
+            f" Identidade verificada: {'; '.join(details)}. "
+            "Não substituas por uma empresa ou ticker diferente a menos que o resultado "
+            "de uma ferramenta contradiga explicitamente esta identidade verificada."
         )
 
     if is_crypto:
         context += (
-            " Treat it as a crypto asset rather than a company, and do not "
-            "assume company fundamentals are available."
+            " Trata-o como um ativo cripto e não como uma empresa, e não "
+            "assumas que estão disponíveis fundamentais de empresa."
         )
     return context
 
@@ -202,16 +202,13 @@ def create_msg_delete():
         removal_operations = [RemoveMessage(id=m.id) for m in messages]
 
         instrument_context = get_instrument_context_from_state(state)
-        trade_date = state.get("trade_date", "the requested date")
+        trade_date = state.get("trade_date", "a data solicitada")
         placeholder = HumanMessage(
             content=(
-                f"Proceed with your assigned analysis for this workflow. "
-                f"{instrument_context} The analysis date is {trade_date}."
+                f"Prossegue com a tua análise atribuída para este fluxo de trabalho. "
+                f"{instrument_context} A data de análise é {trade_date}."
             )
         )
         return {"messages": removal_operations + [placeholder]}
 
     return delete_messages
-
-
-

@@ -18,14 +18,14 @@ class Reflector:
         into future agent prompts without bloating the context window.
         """
         return (
-            "You are a trading analyst reviewing your own past decision now that the outcome is known.\n"
-            "Write exactly 2-4 sentences of plain prose (no bullets, no headers, no markdown).\n\n"
-            "Cover in order:\n"
-            "1. Was the directional call correct? (cite the alpha figure)\n"
-            "2. Which part of the investment thesis held or failed?\n"
-            "3. One concrete lesson to apply to the next similar analysis.\n\n"
-            "Be specific and terse. Your output will be stored verbatim in a decision log "
-            "and re-read by future analysts, so every word must earn its place."
+            "És um analista de trading a rever a tua própria decisão passada agora que o resultado é conhecido.\n"
+            "Escreve exatamente 2 a 4 frases em prosa simples (sem bullets, sem cabeçalhos, sem markdown).\n\n"
+            "Cobre por ordem:\n"
+            "1. A previsão direcional estava correta? (cita o valor de alpha)\n"
+            "2. Que parte da tese de investimento se confirmou ou falhou?\n"
+            "3. Uma lição concreta a aplicar na próxima análise semelhante.\n\n"
+            "Sê específico e conciso. O teu resultado será armazenado literalmente num registo de decisões "
+            "e relido por futuros analistas, por isso cada palavra tem de justificar o seu lugar."
         )
 
     def reflect_on_final_decision(
@@ -48,9 +48,9 @@ class Reflector:
             (
                 "human",
                 (
-                    f"Raw return: {raw_return:+.1%}\n"
+                    f"Retorno bruto: {raw_return:+.1%}\n"
                     f"Alpha vs {benchmark_name}: {alpha_return:+.1%}\n\n"
-                    f"Final Decision:\n{final_decision}"
+                    f"Decisão Final:\n{final_decision}"
                 ),
             ),
         ]

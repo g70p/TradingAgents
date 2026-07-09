@@ -17,38 +17,38 @@ def create_bear_researcher(llm):
         fundamentals_report = state["fundamentals_report"]
         instrument_context = get_instrument_context_from_state(state)
         asset_type = state.get("asset_type", "stock")
-        target_label = "stock" if asset_type == "stock" else "asset"
+        target_label = "ação" if asset_type == "stock" else "ativo"
         fundamentals_label = (
-            "Company fundamentals report"
+            "Relatório de fundamentais da empresa"
             if asset_type == "stock"
-            else "Asset fundamentals report (may be unavailable for crypto)"
+            else "Relatório de fundamentais do ativo (pode estar indisponível para cripto)"
         )
 
-        prompt = f"""You are a Bear Analyst making the case against investing in the {target_label}. Your goal is to present a well-reasoned argument emphasizing risks, challenges, and negative indicators. Leverage the provided research and data to highlight potential downsides and counter bullish arguments effectively.
+        prompt = f"""És um Analista Urso (Bear) a defender o caso contra o investimento na {target_label}. O teu objetivo é apresentar um argumento bem fundamentado que enfatize riscos, desafios e indicadores negativos. Utiliza a investigação e os dados fornecidos para destacar potenciais desvantagens e contrariar argumentos bullish de forma eficaz.
 
-Key points to focus on:
+Pontos-chave a focar:
 
-- Risks and Challenges: Highlight factors like market saturation, financial instability, or macroeconomic threats that could hinder the stock's performance.
-- Competitive Weaknesses: Emphasize vulnerabilities such as weaker market positioning, declining innovation, or threats from competitors.
-- Negative Indicators: Use evidence from financial data, market trends, or recent adverse news to support your position.
-- Bull Counterpoints: Critically analyze the bull argument with specific data and sound reasoning, exposing weaknesses or over-optimistic assumptions.
-- Engagement: Present your argument in a conversational style, directly engaging with the bull analyst's points and debating effectively rather than simply listing facts.
+- Riscos e Desafios: Destaca fatores como saturação do mercado, instabilidade financeira ou ameaças macroeconómicas que possam prejudicar o desempenho da ação.
+- Fraquezas Competitivas: Enfatiza vulnerabilidades como posicionamento de mercado mais fraco, inovação em declínio ou ameaças de concorrentes.
+- Indicadores Negativos: Usa evidências de dados financeiros, tendências de mercado ou notícias adversas recentes para sustentar a tua posição.
+- Contra-argumentos ao Touro: Analisa criticamente o argumento bull com dados específicos e raciocínio sólido, expondo fraquezas ou pressupostos excessivamente otimistas.
+- Envolvimento: Apresenta o teu argumento num estilo conversacional, interagindo diretamente com os pontos do analista bull e debatendo eficazmente em vez de simplesmente listar factos.
 
-Resources available:
+Recursos disponíveis:
 
 {instrument_context}
-Market research report: {market_research_report}
-Social media sentiment report: {sentiment_report}
-Latest world affairs news: {news_report}
+Relatório de análise de mercado: {market_research_report}
+Relatório de sentimento nas redes sociais: {sentiment_report}
+Notícias mundiais mais recentes: {news_report}
 {fundamentals_label}: {fundamentals_report}
-Conversation history of the debate: {history}
-Last bull argument: {current_response}
-Use this information to deliver a compelling bear argument, refute the bull's claims, and engage in a dynamic debate that demonstrates the risks and weaknesses of investing in the {target_label}.
+Histórico da conversa do debate: {history}
+Último argumento do touro: {current_response}
+Usa esta informação para apresentar um argumento bear convincente, refutar as afirmações do touro e participar num debate dinâmico que demonstre os riscos e fraquezas de investir na {target_label}.
 """ + get_language_instruction()
 
         response = llm.invoke(prompt)
 
-        argument = f"Bear Analyst: {response.content}"
+        argument = f"Analista Urso: {response.content}"
 
         new_investment_debate_state = {
             "history": history + "\n" + argument,

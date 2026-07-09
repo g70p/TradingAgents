@@ -34,34 +34,34 @@ def create_portfolio_manager(llm):
 
         past_context = state.get("past_context", "")
         lessons_line = (
-            f"- Lessons from prior decisions and outcomes:\n{past_context}\n"
+            f"- Lições de decisões e resultados anteriores:\n{past_context}\n"
             if past_context
             else ""
         )
 
-        prompt = f"""As the Portfolio Manager, synthesize the risk analysts' debate and deliver the final trading decision.
+        prompt = f"""Enquanto Gestor de Portfólio, sintetiza o debate dos analistas de risco e emite a decisão final de trading.
 
 {instrument_context}
 
 ---
 
-**Rating Scale** (use exactly one):
-- **Buy**: Strong conviction to enter or add to position
-- **Overweight**: Favorable outlook, gradually increase exposure
-- **Hold**: Maintain current position, no action needed
-- **Underweight**: Reduce exposure, take partial profits
-- **Sell**: Exit position or avoid entry
+**Escala de Classificação** (usa exatamente uma):
+- **Comprar**: Forte convicção para entrar ou aumentar a posição
+- **Sobreponderar**: Perspetiva favorável, aumentar gradualmente a exposição
+- **Manter**: Manter a posição atual, sem ação necessária
+- **Subponderar**: Reduzir a exposição, realizar lucros parciais
+- **Vender**: Sair da posição ou evitar a entrada
 
-**Context:**
-- Research Manager's investment plan: **{research_plan}**
-- Trader's transaction proposal: **{trader_plan}**
+**Contexto:**
+- Plano de investimento do Gestor de Investigação: **{research_plan}**
+- Proposta de transação do Trader: **{trader_plan}**
 {lessons_line}
-**Risk Analysts Debate History:**
+**Histórico do Debate dos Analistas de Risco:**
 {history}
 
 ---
 
-Be decisive and ground every conclusion in specific evidence from the analysts.{get_language_instruction()}"""
+Sê decisivo e fundamenta cada conclusão em evidências específicas dos analistas.{get_language_instruction()}"""
 
         final_trade_decision = invoke_structured_or_freetext(
             structured_llm,

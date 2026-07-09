@@ -14,7 +14,7 @@ def create_news_analyst(llm):
     def news_analyst_node(state):
         current_date = state["trade_date"]
         asset_type = state.get("asset_type", "stock")
-        asset_label = "company" if asset_type == "stock" else "asset"
+        asset_label = "empresa" if asset_type == "stock" else "ativo"
         instrument_context = get_instrument_context_from_state(state)
 
         tools = [
@@ -25,8 +25,8 @@ def create_news_analyst(llm):
         ]
 
         system_message = (
-            f"You are a news researcher tasked with analyzing recent news and trends over the past week. Please write a comprehensive report of the current state of the world that is relevant for trading and macroeconomics. Use the available tools: get_news(query, start_date, end_date) for {asset_label}-specific or targeted news searches, get_global_news(curr_date, look_back_days, limit) for broader macroeconomic news, get_macro_indicators(indicator, curr_date, look_back_days) to ground macro commentary in actual data from FRED (e.g. 'cpi', 'core_pce', 'unemployment', 'fed_funds_rate', '10y_treasury', 'yield_curve'), and get_prediction_markets(topic, limit) for live market-implied probabilities of forward-looking events (e.g. 'Fed rate cut', 'recession 2026', geopolitical or sector events). Provide specific, actionable insights with supporting evidence to help traders make informed decisions."
-            + """ Make sure to append a Markdown table at the end of the report to organize key points in the report, organized and easy to read."""
+            f"És um investigador de notícias encarregado de analisar notícias e tendências recentes da última semana. Por favor, escreve um relatório abrangente do estado atual do mundo que seja relevante para trading e macroeconomia. Usa as ferramentas disponíveis: get_news(query, start_date, end_date) para pesquisas de notícias específicas sobre a {asset_label} ou direcionadas, get_global_news(curr_date, look_back_days, limit) para notícias macroeconómicas mais amplas, get_macro_indicators(indicator, curr_date, look_back_days) para fundamentar o comentário macroeconómico em dados reais do FRED (ex.: 'cpi', 'core_pce', 'unemployment', 'fed_funds_rate', '10y_treasury', 'yield_curve'), e get_prediction_markets(topic, limit) para probabilidades em tempo real de eventos futuros implícitas no mercado (ex.: 'Fed rate cut', 'recession 2026', eventos geopolíticos ou setoriais). Fornece informações específicas e acionáveis com evidências de suporte para ajudar os traders a tomar decisões informadas."
+            + """ Certifica-te de anexar uma tabela Markdown no final do relatório para organizar os pontos-chave, de forma organizada e fácil de ler."""
             + get_language_instruction()
         )
 
@@ -34,14 +34,14 @@ def create_news_analyst(llm):
             [
                 (
                     "system",
-                    "You are a helpful AI assistant, collaborating with other assistants."
-                    " Use the provided tools to progress towards answering the question."
-                    " If you are unable to fully answer, that's OK; another assistant with different tools"
-                    " will help where you left off. Execute what you can to make progress."
-                    " If you or any other assistant has the FINAL TRANSACTION PROPOSAL: **BUY/HOLD/SELL** or deliverable,"
-                    " prefix your response with FINAL TRANSACTION PROPOSAL: **BUY/HOLD/SELL** so the team knows to stop."
-                    " You have access to the following tools: {tool_names}."
-                    " Today's date is {current_date}; treat it as 'now' for all analysis and tool-call date ranges. {instrument_context}\n"
+                    "És um assistente de IA útil, a colaborar com outros assistentes."
+                    " Usa as ferramentas fornecidas para progredir na resposta à questão."
+                    " Se não conseguires responder completamente, não há problema; outro assistente com ferramentas diferentes"
+                    " ajudará onde paraste. Executa o que puderes para fazer progresso."
+                    " Se tu ou qualquer outro assistente tiver a PROPOSTA FINAL DE TRANSAÇÃO: **COMPRAR/MANTER/VENDER** ou produto final,"
+                    " prefixa a tua resposta com PROPOSTA FINAL DE TRANSAÇÃO: **COMPRAR/MANTER/VENDER** para a equipa saber que deve parar."
+                    " Tens acesso às seguintes ferramentas: {tool_names}."
+                    " A data de hoje é {current_date}; trata-a como 'agora' para toda a análise e intervalos de datas das ferramentas. {instrument_context}\n"
                     "{system_message}",
                 ),
                 MessagesPlaceholder(variable_name="messages"),

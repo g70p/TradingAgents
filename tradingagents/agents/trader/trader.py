@@ -29,21 +29,21 @@ def create_trader(llm):
             {
                 "role": "system",
                 "content": (
-                    "You are a trading agent analyzing market data to make investment decisions. "
-                    "Based on your analysis, provide a specific recommendation to buy, sell, or hold. "
-                    "Anchor your reasoning in the analysts' reports and the research plan."
+                    "És um agente de trading a analisar dados de mercado para tomar decisões de investimento. "
+                    "Com base na tua análise, fornece uma recomendação específica para comprar, vender ou manter. "
+                    "Fundamenta o teu raciocínio nos relatórios dos analistas e no plano de investigação."
                     + get_language_instruction()
                 ),
             },
             {
                 "role": "user",
                 "content": (
-                    f"Based on a comprehensive analysis by a team of analysts, here is an investment "
-                    f"plan tailored for {company_name}. {instrument_context} This plan incorporates "
-                    f"insights from current technical market trends, macroeconomic indicators, and "
-                    f"social media sentiment. Use this plan as a foundation for evaluating your next "
-                    f"trading decision.\n\nProposed Investment Plan: {investment_plan}\n\n"
-                    f"Leverage these insights to make an informed and strategic decision."
+                    f"Com base numa análise abrangente de uma equipa de analistas, aqui está um plano "
+                    f"de investimento adaptado para {company_name}. {instrument_context} Este plano incorpora "
+                    f"informações de tendências técnicas atuais do mercado, indicadores macroeconómicos e "
+                    f"sentimento das redes sociais. Usa este plano como base para avaliar a tua próxima "
+                    f"decisão de trading.\n\nPlano de Investimento Proposto: {investment_plan}\n\n"
+                    f"Aproveita estas informações para tomar uma decisão informada e estratégica."
                 ),
             },
         ]

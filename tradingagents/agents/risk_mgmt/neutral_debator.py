@@ -21,24 +21,24 @@ def create_neutral_debator(llm):
 
         trader_decision = state["trader_investment_plan"]
 
-        prompt = f"""As the Neutral Risk Analyst, your role is to provide a balanced perspective, weighing both the potential benefits and risks of the trader's decision or plan. You prioritize a well-rounded approach, evaluating the upsides and downsides while factoring in broader market trends, potential economic shifts, and diversification strategies.Here is the trader's decision:
+        prompt = f"""Enquanto Analista de Risco Neutro, a tua função é fornecer uma perspetiva equilibrada, ponderando tanto os potenciais benefícios como os riscos da decisão ou plano do trader. Priorizas uma abordagem bem ponderada, avaliando os pontos positivos e negativos enquanto consideras tendências de mercado mais amplas, potenciais mudanças económicas e estratégias de diversificação. Aqui está a decisão do trader:
 
 {trader_decision}
 
-Your task is to challenge both the Aggressive and Conservative Analysts, pointing out where each perspective may be overly optimistic or overly cautious. Use insights from the following data sources to support a moderate, sustainable strategy to adjust the trader's decision:
+A tua tarefa é desafiar tanto o Analista Agressivo como o Conservador, apontando onde cada perspetiva pode ser excessivamente otimista ou excessivamente cautelosa. Usa informações das seguintes fontes de dados para apoiar uma estratégia moderada e sustentável para ajustar a decisão do trader:
 
 {instrument_context}
-Market Research Report: {market_research_report}
-Social Media Sentiment Report: {sentiment_report}
-Latest World Affairs Report: {news_report}
-Company Fundamentals Report: {fundamentals_report}
-Here is the current conversation history: {history} Here is the last response from the aggressive analyst: {current_aggressive_response} Here is the last response from the conservative analyst: {current_conservative_response}. If there are no responses from the other viewpoints yet, present your own argument based on the available data.
+Relatório de Análise de Mercado: {market_research_report}
+Relatório de Sentimento nas Redes Sociais: {sentiment_report}
+Relatório de Notícias Mundiais: {news_report}
+Relatório de Fundamentais da Empresa: {fundamentals_report}
+Aqui está o histórico atual da conversa: {history} Aqui está a última resposta do analista agressivo: {current_aggressive_response} Aqui está a última resposta do analista conservador: {current_conservative_response}. Se ainda não houver respostas dos outros pontos de vista, apresenta o teu próprio argumento com base nos dados disponíveis.
 
-Engage actively by analyzing both sides critically, addressing weaknesses in the aggressive and conservative arguments to advocate for a more balanced approach. Challenge each of their points to illustrate why a moderate risk strategy might offer the best of both worlds, providing growth potential while safeguarding against extreme volatility. Focus on debating rather than simply presenting data, aiming to show that a balanced view can lead to the most reliable outcomes. Output conversationally as if you are speaking without any special formatting.""" + get_language_instruction()
+Participa ativamente, analisando ambos os lados de forma crítica, abordando as fraquezas nos argumentos agressivo e conservador para defender uma abordagem mais equilibrada. Desafia cada um dos seus pontos para ilustrar por que uma estratégia de risco moderado pode oferecer o melhor dos dois mundos, proporcionando potencial de crescimento enquanto protege contra a volatilidade extrema. Foca-te em debater em vez de simplesmente apresentar dados, procurando mostrar que uma visão equilibrada pode conduzir aos resultados mais fiáveis. Responde de forma conversacional, como se estivesses a falar, sem formatação especial.""" + get_language_instruction()
 
         response = llm.invoke(prompt)
 
-        argument = f"Neutral Analyst: {response.content}"
+        argument = f"Analista Neutro: {response.content}"
 
         new_risk_debate_state = {
             "history": history + "\n" + argument,

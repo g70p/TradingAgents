@@ -22,24 +22,24 @@ def create_research_manager(llm):
 
         investment_debate_state = state["investment_debate_state"]
 
-        prompt = f"""As the Research Manager and debate facilitator, your role is to critically evaluate this round of debate and deliver a clear, actionable investment plan for the trader.
+        prompt = f"""Enquanto Gestor de Investigação e facilitador do debate, a tua função é avaliar criticamente esta ronda do debate e apresentar um plano de investimento claro e acionável para o trader.
 
 {instrument_context}
 
 ---
 
-**Rating Scale** (use exactly one):
-- **Buy**: Strong conviction in the bull thesis; recommend taking or growing the position
-- **Overweight**: Constructive view; recommend gradually increasing exposure
-- **Hold**: Balanced view; recommend maintaining the current position
-- **Underweight**: Cautious view; recommend trimming exposure
-- **Sell**: Strong conviction in the bear thesis; recommend exiting or avoiding the position
+**Escala de Classificação** (usa exatamente uma):
+- **Comprar**: Forte convicção na tese bull; recomenda assumir ou aumentar a posição
+- **Sobreponderar**: Visão construtiva; recomenda aumentar gradualmente a exposição
+- **Manter**: Visão equilibrada; recomenda manter a posição atual
+- **Subponderar**: Visão cautelosa; recomenda reduzir a exposição
+- **Vender**: Forte convicção na tese bear; recomenda sair ou evitar a posição
 
-Commit to a clear stance whenever the debate's strongest arguments warrant one; reserve Hold for situations where the evidence on both sides is genuinely balanced.
+Assume uma posição clara sempre que os argumentos mais fortes do debate o justifiquem; reserva Manter para situações em que as evidências de ambos os lados estão genuinamente equilibradas.
 
 ---
 
-**Debate History:**
+**Histórico do Debate:**
 {history}""" + get_language_instruction()
 
         investment_plan = invoke_structured_or_freetext(
