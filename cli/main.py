@@ -537,17 +537,35 @@ def _build_quick_selections_for(ticker: str) -> dict:
 def _run_analysis_standalone(selections: dict, config: dict) -> None:
     """Corre o pipeline completo sem UI interativa (usado pelo menu rápido)."""
     stats_handler = StatsCallbackHandler()
-    selected_keys = [a for a in ["market", "social", "news", "fundamentals"] if a in selections.get("analysts", [])]
-    if not selected_keys:
-        selected_keys = ["market", "social", "news", "fundamentals"]
-    graph = TradingAgentsGraph(selected_keys, config=config, debug=True, callbacks=[stats_handler])
-    message_buffer.init_for_analysis(selected_keys)
-    start_time = time.time()
-    layout = _build_menu_layout()
-    spinner_text = f"A analisar {selections['ticker']} em {selections['analysis_date']}..."
-    _update_menu_display(layout, spinner_text, stats_handler, start_time)
 
-    # Inject context (same as _run_graph)
+    selected_set = set(selections["analysts"])
+    selected_analyst_keys = [
+        key for display, key in ANALYST_ORDER
+        if key.value in selected_set
+    ]
+    if not selected_analyst_keys:
+        selected_analyst_keys = [key for _, key in ANALYST_ORDER]
+    analyst_execution_plan = build_analyst_execution_plan(selected_analyst_keys)
+    analyst_wall_time_tracker = AnalystWallTimeTracker(analyst_execution_plan)
+
+    graph = TradingAgentsGraph(
+        selected_analyst_keys,
+        config=config,
+        debug=True,
+        callbacks=[stats_handler],
+    )
+    message_buffer.init_for_analysis(selected_analyst_keys)
+
+    start_time = time.time()
+    results_dir = Path(config["results_dir"]) / selections["ticker"] / selections["analysis_date"]
+    results_dir.mkdir(parents=True, exist_ok=True)
+    (results_dir / "reports").mkdir(parents=True, exist_ok=True)
+
+    layout = create_layout()
+    spinner_text = f"A analisar {selections['ticker']} em {selections['analysis_date']}..."
+    update_display(layout, spinner_text, stats_handler=stats_handler, start_time=start_time)
+
+    # Inject context
     instrument_context = graph.resolve_instrument_context(selections["ticker"], selections["asset_type"])
     past_context = graph.memory_log.get_past_context(selections["ticker"])
     state = graph.propagator.create_initial_state(
@@ -565,41 +583,41 @@ def _run_analysis_standalone(selections: dict, config: dict) -> None:
         state["market_session_context"] = mc
 
     args = graph.propagator.get_graph_args(callbacks=[stats_handler])
-    final_state = {}
+    trace = []
+    analysis_error = None
     try:
         for chunk in graph.graph.stream(state, **args):
-            final_state.update(chunk)
+            for message in chunk.get("messages", []):
+                msg_id = getattr(message, "id", None)
+                if msg_id is not None and hasattr(message_buffer, '_processed_message_ids'):
+                    if msg_id in message_buffer._processed_message_ids:
+                        continue
+                    message_buffer._processed_message_ids.add(msg_id)
+                msg_type, content = classify_message_type(message)
+                if content and content.strip():
+                    message_buffer.add_message(msg_type, content)
+            update_display(layout, stats_handler=stats_handler, start_time=start_time)
+            trace.append(chunk)
     except Exception as e:
-        console.print(f"\n[red]❌ Erro: {e}[/red]")
+        analysis_error = str(e)
+        console.print(f"\n[red]❌ Erro: {analysis_error}[/red]")
         return
 
+    final_state = {}
+    for chunk in trace:
+        final_state.update(chunk)
+
+    update_display(layout, stats_handler=stats_handler, start_time=start_time)
     console.print(f"\n[bold cyan]Análise Concluída![/bold cyan]")
-    decision = final_state.get("final_trade_decision", "N/A")
-    console.print(Markdown(str(decision)[:500]))
-    # Save report
+    decision = final_state.get("final_trade_decision", "")
+    if decision:
+        console.print(Markdown(str(decision)[:800]))
+
     try:
         report_path = graph.save_reports(final_state, selections["ticker"])
         console.print(f"\n[dim]📁 Relatório: {report_path}[/dim]")
     except Exception:
         pass
-
-
-def _build_menu_layout():
-    """Layout simplificado para o modo rápido."""
-    layout = Layout()
-    layout.split_column(Layout(name="header"), Layout(name="body"))
-    layout["body"].split_row(Layout(name="progress", ratio=2), Layout(name="result", ratio=3))
-    layout["header"].update(Panel("TradingAgents PT-PT · Modo Rápido", border_style="green"))
-    layout["progress"].update(Panel("A iniciar...", title="Progresso", border_style="cyan"))
-    layout["result"].update(Panel("À espera...", title="Resultado", border_style="green"))
-    return layout
-
-
-def _update_menu_display(layout, spinner_text, stats_handler, start_time):
-    """Actualiza o display do modo rápido."""
-    from rich.live import Live
-    from rich.spinner import Spinner
-    layout["progress"].update(Panel(Spinner("dots", text=spinner_text), title="Progresso", border_style="cyan"))
 
 
 def get_user_selections():
