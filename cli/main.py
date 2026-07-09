@@ -6,6 +6,7 @@ from functools import wraps
 from pathlib import Path
 
 import typer
+import questionary
 from rich import box
 from rich.align import Align
 from rich.console import Console
@@ -479,6 +480,134 @@ def update_display(layout, spinner_text=None, stats_handler=None, start_time=Non
     layout["footer"].update(Panel(stats_table, border_style="grey50"))
 
 
+def _show_history() -> None:
+    """Mostra as últimas análises guardadas em disco."""
+    results_dir = Path(DEFAULT_CONFIG["results_dir"])
+    if not results_dir.exists():
+        console.print("[dim]  Nenhuma análise encontrada.[/dim]")
+        return
+    tickers = sorted([d for d in results_dir.iterdir() if d.is_dir()], key=lambda p: p.stat().st_mtime, reverse=True)
+    if not tickers:
+        console.print("[dim]  Nenhuma análise encontrada.[/dim]")
+        return
+    console.print("\n[bold]📁 Últimas Análises[/bold]\n")
+    for td in tickers[:10]:
+        log_dir = td / "TradingAgentsStrategy_logs"
+        logs = sorted(log_dir.glob("full_states_log_*.json"), reverse=True) if log_dir.exists() else []
+        last = logs[0].stem.replace("full_states_log_", "") if logs else "?"
+        console.print(f"  [cyan]{td.name}[/cyan] — última: {last}" + (f" | {len(logs)} logs" if logs else ""))
+    console.print()
+
+
+def _show_config() -> None:
+    """Mostra a configuração actual."""
+    console.print("\n[bold]⚙️  Configuração Actual[/bold]\n")
+    for k, v in [
+        ("Fornecedor", DEFAULT_CONFIG['llm_provider']),
+        ("Deep Think", DEFAULT_CONFIG['deep_think_llm']),
+        ("Quick Think", DEFAULT_CONFIG['quick_think_llm']),
+        ("Idioma", DEFAULT_CONFIG['output_language']),
+        ("Debate", f"{DEFAULT_CONFIG['max_debate_rounds']} rondas"),
+        ("Risco", f"{DEFAULT_CONFIG['max_risk_discuss_rounds']} rondas"),
+        ("Resultados", DEFAULT_CONFIG['results_dir']),
+    ]:
+        console.print(f"  {k}: [green]{v}[/green]")
+
+
+def _build_quick_selections() -> dict:
+    """Selections a partir do .env — sem prompts."""
+    from cli.utils import detect_asset_type, normalize_ticker_symbol
+    import sys as _sys
+    args = _sys.argv[_sys.argv.index("analyze") + 1:] if "analyze" in _sys.argv else []
+    ticker = "EDP.LS"
+    for arg in args:
+        if not arg.startswith("-") and arg != "--quick":
+            ticker = arg; break
+    ticker = normalize_ticker_symbol(ticker)
+    asset_type = detect_asset_type(ticker)
+    analysis_date = datetime.datetime.now().strftime("%Y-%m-%d")
+    console.print(f"[green]🚀 Modo rápido:[/green] {ticker} ({asset_type.value}) — {analysis_date}")
+    return {
+        "ticker": ticker, "asset_type": asset_type.value, "analysis_date": analysis_date,
+        "analysts": ["market", "social", "news", "fundamentals"],
+        "research_depth": DEFAULT_CONFIG["max_debate_rounds"],
+        "llm_provider": DEFAULT_CONFIG["llm_provider"],
+        "backend_url": DEFAULT_CONFIG.get("backend_url"),
+        "shallow_thinker": DEFAULT_CONFIG["quick_think_llm"],
+        "deep_thinker": DEFAULT_CONFIG["deep_think_llm"],
+        "google_thinking_level": None, "openai_reasoning_effort": None, "anthropic_effort": None,
+        "output_language": DEFAULT_CONFIG["output_language"],
+    }
+
+
+def _run_analysis_standalone(selections: dict, config: dict) -> None:
+    """Corre o pipeline completo sem UI interativa (usado pelo menu rápido)."""
+    stats_handler = StatsCallbackHandler()
+    selected_keys = [a for a in ["market", "social", "news", "fundamentals"] if a in selections.get("analysts", [])]
+    if not selected_keys:
+        selected_keys = ["market", "social", "news", "fundamentals"]
+    graph = TradingAgentsGraph(selected_keys, config=config, debug=True, callbacks=[stats_handler])
+    message_buffer.init_for_analysis(selected_keys)
+    start_time = time.time()
+    layout = _build_menu_layout()
+    spinner_text = f"A analisar {selections['ticker']} em {selections['analysis_date']}..."
+    _update_menu_display(layout, spinner_text, stats_handler, start_time)
+
+    # Inject context (same as _run_graph)
+    instrument_context = graph.resolve_instrument_context(selections["ticker"], selections["asset_type"])
+    past_context = graph.memory_log.get_past_context(selections["ticker"])
+    state = graph.propagator.create_initial_state(
+        selections["ticker"], selections["analysis_date"],
+        asset_type=selections["asset_type"], instrument_context=instrument_context, past_context=past_context,
+    )
+    if selections["asset_type"] == "crypto":
+        from tradingagents.dataflows.crypto_onchain import get_crypto_onchain_summary
+        onchain = get_crypto_onchain_summary(selections["ticker"])
+        if onchain and "indisponível" not in onchain.split("\n")[0].lower():
+            state["crypto_onchain_data"] = onchain
+    from tradingagents.dataflows.market_sessions import get_market_context_for_state
+    mc = get_market_context_for_state(selections["ticker"], selections["asset_type"])
+    if mc:
+        state["market_session_context"] = mc
+
+    args = graph.propagator.get_graph_args(callbacks=[stats_handler])
+    final_state = {}
+    try:
+        for chunk in graph.graph.stream(state, **args):
+            final_state.update(chunk)
+    except Exception as e:
+        console.print(f"\n[red]❌ Erro: {e}[/red]")
+        return
+
+    console.print(f"\n[bold cyan]Análise Concluída![/bold cyan]")
+    decision = final_state.get("final_trade_decision", "N/A")
+    console.print(Markdown(str(decision)[:500]))
+    # Save report
+    try:
+        report_path = graph.save_reports(final_state, selections["ticker"])
+        console.print(f"\n[dim]📁 Relatório: {report_path}[/dim]")
+    except Exception:
+        pass
+
+
+def _build_menu_layout():
+    """Layout simplificado para o modo rápido."""
+    layout = Layout()
+    layout.split_column(Layout(name="header"), Layout(name="body"))
+    layout["body"].split_row(Layout(name="progress", ratio=2), Layout(name="result", ratio=3))
+    layout["header"].update(Panel("TradingAgents PT-PT · Modo Rápido", border_style="green"))
+    layout["progress"].update(Panel("A iniciar...", title="Progresso", border_style="cyan"))
+    layout["result"].update(Panel("À espera...", title="Resultado", border_style="green"))
+    return layout
+
+
+def _update_menu_display(layout, spinner_text, stats_handler, start_time):
+    """Actualiza o display do modo rápido."""
+    from rich.live import Live
+    from rich.spinner import Spinner
+    layout["progress"].update(Panel(Spinner("dots", text=spinner_text), title="Progresso", border_style="cyan"))
+
+
 def get_user_selections():
     """Get all user selections before starting the analysis display."""
     # Display ASCII art welcome message
@@ -510,7 +639,43 @@ def get_user_selections():
     announcements = fetch_announcements()
     display_announcements(console, announcements)
 
-    # Create a boxed questionnaire for each step
+    # ── Menu Principal ────────────────────────────────────────────────
+    import sys as _sys
+    while True:
+        choice = questionary.select(
+            "Menu Principal",
+            choices=[
+                questionary.Choice("1. Analisar Ticker", "analyze"),
+                questionary.Choice("2. Análise Rápida (.env)", "quick"),
+                questionary.Choice("3. Histórico de Análises", "history"),
+                questionary.Choice("4. Ver Configuração (.env)", "config"),
+                questionary.Choice("5. Sair", "exit"),
+            ],
+            style=questionary.Style([
+                ("selected", "fg:green noinherit"),
+                ("highlighted", "fg:green noinherit"),
+            ]),
+        ).ask()
+
+        if choice is None or choice == "exit":
+            console.print("\n[dim]Até breve. 👋[/dim]\n")
+            _sys.exit(0)
+        elif choice == "analyze":
+            break  # Continuar para o fluxo interativo
+        elif choice == "quick":
+            # Modo rápido: usa .env, ticker do argumento ou EDP.LS
+            selections = _build_quick_selections()
+            config = _build_run_config(selections, None)
+            _run_analysis_standalone(selections, config)
+            console.print()
+        elif choice == "history":
+            _show_history()
+            console.print()
+        elif choice == "config":
+            _show_config()
+            console.print()
+
+    # ── Fluxo Interativo ───────────────────────────────────────────────
     def create_question_box(title, prompt, default=None):
         box_content = f"[bold]{title}[/bold]\n"
         box_content += f"[dim]{prompt}[/dim]"
@@ -992,47 +1157,6 @@ def _build_run_config(selections: dict, checkpoint: bool | None) -> dict:
     if checkpoint is not None:
         config["checkpoint_enabled"] = checkpoint
     return config
-
-
-def _build_quick_selections() -> dict:
-    """Constrói selections a partir do .env, sem prompts interativos.
-
-    Usa o ticker passado como argumento (ex: 'tradingagents analyze --quick BCP.LS')
-    ou EDP.LS como padrão. Data = hoje. Tudo o resto vem do .env/DEFAULT_CONFIG.
-    """
-    import sys
-
-    # Ticker: 1º argumento posicional depois de 'analyze', ou padrão EDP.LS
-    args = sys.argv[sys.argv.index("analyze") + 1:] if "analyze" in sys.argv else []
-    ticker = "EDP.LS"
-    for arg in args:
-        if not arg.startswith("-") and arg != "--quick":
-            ticker = arg
-            break
-
-    from cli.utils import detect_asset_type, normalize_ticker_symbol
-    ticker = normalize_ticker_symbol(ticker)
-    asset_type = detect_asset_type(ticker)
-    analysis_date = datetime.datetime.now().strftime("%Y-%m-%d")
-
-    console.print(f"[green]🚀 Modo rápido:[/green] {ticker} ({asset_type.value}) — {analysis_date}")
-    console.print(f"[dim]Usando configuração do .env para todos os parâmetros.[/dim]")
-
-    return {
-        "ticker": ticker,
-        "asset_type": asset_type.value,
-        "analysis_date": analysis_date,
-        "analysts": ["market", "social", "news", "fundamentals"],
-        "research_depth": DEFAULT_CONFIG["max_debate_rounds"],
-        "llm_provider": DEFAULT_CONFIG["llm_provider"],
-        "backend_url": DEFAULT_CONFIG.get("backend_url"),
-        "shallow_thinker": DEFAULT_CONFIG["quick_think_llm"],
-        "deep_thinker": DEFAULT_CONFIG["deep_think_llm"],
-        "google_thinking_level": DEFAULT_CONFIG.get("google_thinking_level"),
-        "openai_reasoning_effort": DEFAULT_CONFIG.get("openai_reasoning_effort"),
-        "anthropic_effort": DEFAULT_CONFIG.get("anthropic_effort"),
-        "output_language": DEFAULT_CONFIG["output_language"],
-    }
 
 
 def run_analysis(checkpoint: bool | None = None, quick: bool = False):
