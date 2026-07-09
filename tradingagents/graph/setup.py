@@ -35,7 +35,6 @@ class GraphSetup:
         deep_thinking_llm: Any,
         tool_nodes: dict[str, ToolNode],
         conditional_logic: ConditionalLogic,
-        config: dict[str, Any] = None,
     ):
         """Initialize with required components.
 
@@ -44,32 +43,11 @@ class GraphSetup:
             deep_thinking_llm: Deep reasoning LLM for ALL trading agents
             tool_nodes: Tool nodes for data fetching
             conditional_logic: Conditional edge logic
-            config: Optional config dict for per-agent temperature overrides
         """
         self.quick_thinking_llm = quick_thinking_llm
         self.deep_thinking_llm = deep_thinking_llm
         self.tool_nodes = tool_nodes
         self.conditional_logic = conditional_logic
-        self.config = config or {}
-
-    def _get_llm_for(self, agent_type: str) -> Any:
-        """Get the appropriate LLM for an agent type.
-
-        All trading agents use deep_thinking_llm for maximum analysis quality.
-        Temperature overrides from config are applied when supported by the provider.
-        """
-        llm = self.deep_thinking_llm
-
-        agent_temps = self.config.get("agent_temperatures", {})
-        if agent_type in agent_temps:
-            temp = agent_temps[agent_type]
-            if temp is not None:
-                try:
-                    llm = llm.bind(temperature=temp)
-                except Exception:
-                    pass  # Provider doesn't support per-call temperature
-
-        return llm
 
     def setup_graph(
         self, selected_analysts=("market", "social", "news", "fundamentals")
@@ -88,37 +66,23 @@ class GraphSetup:
         """
         plan = build_analyst_execution_plan(selected_analysts)
 
-        # All analysts use deep thinking with analyst temperature
-        analyst_llm = self._get_llm_for("analyst")
+        # All analysts use deep thinking directly (DeepSeek ignores temperature anyway)
         analyst_factories = {
-            "market": lambda: create_market_analyst(analyst_llm),
-            "social": lambda: create_sentiment_analyst(analyst_llm),
-            "news": lambda: create_news_analyst(analyst_llm),
-            "fundamentals": lambda: create_fundamentals_analyst(analyst_llm),
+            "market": lambda: create_market_analyst(self.deep_thinking_llm),
+            "social": lambda: create_sentiment_analyst(self.deep_thinking_llm),
+            "news": lambda: create_news_analyst(self.deep_thinking_llm),
+            "fundamentals": lambda: create_fundamentals_analyst(self.deep_thinking_llm),
         }
 
-        # Researchers use deep thinking with researcher temperature
-        researcher_llm = self._get_llm_for("researcher")
-        bull_researcher_node = create_bull_researcher(researcher_llm)
-        bear_researcher_node = create_bear_researcher(researcher_llm)
-
-        # Research Manager already had deep thinking — keep it
-        research_manager_llm = self._get_llm_for("portfolio_manager")
-        research_manager_node = create_research_manager(research_manager_llm)
-
-        # Trader uses deep thinking with trader temperature
-        trader_llm = self._get_llm_for("trader")
-        trader_node = create_trader(trader_llm)
-
-        # Risk analysts use deep thinking with risk_manager temperature
-        risk_llm = self._get_llm_for("risk_manager")
-        aggressive_analyst = create_aggressive_debator(risk_llm)
-        neutral_analyst = create_neutral_debator(risk_llm)
-        conservative_analyst = create_conservative_debator(risk_llm)
-
-        # Portfolio Manager already had deep thinking — keep it
-        pm_llm = self._get_llm_for("portfolio_manager")
-        portfolio_manager_node = create_portfolio_manager(pm_llm)
+        # Researchers, trader, risk, managers — all use deep thinking
+        bull_researcher_node = create_bull_researcher(self.deep_thinking_llm)
+        bear_researcher_node = create_bear_researcher(self.deep_thinking_llm)
+        research_manager_node = create_research_manager(self.deep_thinking_llm)
+        trader_node = create_trader(self.deep_thinking_llm)
+        aggressive_analyst = create_aggressive_debator(self.deep_thinking_llm)
+        neutral_analyst = create_neutral_debator(self.deep_thinking_llm)
+        conservative_analyst = create_conservative_debator(self.deep_thinking_llm)
+        portfolio_manager_node = create_portfolio_manager(self.deep_thinking_llm)
 
         # Create workflow
         workflow = StateGraph(AgentState)
