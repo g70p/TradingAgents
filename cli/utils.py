@@ -11,13 +11,13 @@ from tradingagents.llm_clients.model_catalog import get_model_options
 
 console = Console()
 
-TICKER_INPUT_EXAMPLES = "SPY, 0700.HK, BTC-USD"
+TICKER_INPUT_EXAMPLES = "EDP.LS, BTC-USD, GC=F"
 
 ANALYST_ORDER = [
-    ("Market Analyst", AnalystType.MARKET),
-    ("Sentiment Analyst", AnalystType.SOCIAL),
-    ("News Analyst", AnalystType.NEWS),
-    ("Fundamentals Analyst", AnalystType.FUNDAMENTALS),
+    ("Analista de Mercado", AnalystType.MARKET),
+    ("Analista de Sentimento", AnalystType.SOCIAL),
+    ("Analista de Notícias", AnalystType.NEWS),
+    ("Analista de Fundamentais", AnalystType.FUNDAMENTALS),
 ]
 
 CRYPTO_SUFFIXES = ("-USD", "-USDT", "-USDC", "-BTC", "-ETH")
@@ -42,10 +42,10 @@ def get_ticker() -> str:
     obvious typo is caught before the run starts.
     """
     ticker = questionary.text(
-        f"Enter ticker symbol (e.g. {TICKER_INPUT_EXAMPLES}):",
+        f"Símbolo do ticker (ex: {TICKER_INPUT_EXAMPLES}):",
         validate=lambda x: (
             is_valid_ticker_input(x)
-            or "Please enter a valid ticker symbol, e.g. AAPL, 000404.SZ, 0700.HK, GC=F."
+            or "Introduz um símbolo válido, ex: EDP.LS, BTC-USD, GC=F."
         ),
         style=questionary.Style(
             [
@@ -56,7 +56,7 @@ def get_ticker() -> str:
     ).ask()
 
     if ticker is None:
-        console.print("\n[red]No ticker symbol provided. Exiting...[/red]")
+        console.print("\n[red]Nenhum ticker fornecido. A sair...[/red]")
         exit(1)
 
     return normalize_ticker_symbol(ticker) if ticker.strip() else "SPY"
@@ -114,9 +114,9 @@ def get_analysis_date() -> str:
             return False
 
     date = questionary.text(
-        "Enter the analysis date (YYYY-MM-DD):",
+        "Data da análise (AAAA-MM-DD):",
         validate=lambda x: validate_date(x.strip())
-        or "Please enter a valid date in YYYY-MM-DD format.",
+        or "Introduz uma data válida no formato AAAA-MM-DD.",
         style=questionary.Style(
             [
                 ("text", "fg:green"),
@@ -126,7 +126,7 @@ def get_analysis_date() -> str:
     ).ask()
 
     if not date:
-        console.print("\n[red]No date provided. Exiting...[/red]")
+        console.print("\n[red]Nenhuma data fornecida. A sair...[/red]")
         exit(1)
 
     return date.strip()
@@ -139,14 +139,14 @@ def select_analysts(asset_type: AssetType = AssetType.STOCK) -> list[AnalystType
         asset_type,
     )
     choices = questionary.checkbox(
-        "Select Your [Analysts Team]:",
+        "Seleciona a [Equipa de Analistas]:",
         choices=[
             questionary.Choice(display, value=value)
             for display, value in ANALYST_ORDER
             if value in available_analysts
         ],
-        instruction="\n- Press Space to select/unselect analysts\n- Press 'a' to select/unselect all\n- Press Enter when done",
-        validate=lambda x: len(x) > 0 or "You must select at least one analyst.",
+        instruction="\n- Espaço para selecionar/desselecionar\n- 'a' para selecionar/desselecionar todos\n- Enter para confirmar",
+        validate=lambda x: len(x) > 0 or "Tens de selecionar pelo menos um analista.",
         style=questionary.Style(
             [
                 ("checkbox-selected", "fg:green"),
@@ -158,7 +158,7 @@ def select_analysts(asset_type: AssetType = AssetType.STOCK) -> list[AnalystType
     ).ask()
 
     if not choices:
-        console.print("\n[red]No analysts selected. Exiting...[/red]")
+        console.print("\n[red]Nenhum analista selecionado. A sair...[/red]")
         exit(1)
 
     return choices
@@ -169,17 +169,17 @@ def select_research_depth() -> int:
 
     # Define research depth options with their corresponding values
     DEPTH_OPTIONS = [
-        ("Shallow - Quick research, few debate and strategy discussion rounds", 1),
-        ("Medium - Middle ground, moderate debate rounds and strategy discussion", 3),
-        ("Deep - Comprehensive research, in depth debate and strategy discussion", 5),
+        ("Superficial — Pesquisa rápida, poucas rondas de debate", 1),
+        ("Médio — Meio-termo, rondas moderadas de debate", 3),
+        ("Profundo — Pesquisa abrangente, debate aprofundado", 5),
     ]
 
     choice = questionary.select(
-        "Select Your [Research Depth]:",
+        "Seleciona a [Profundidade de Pesquisa]:",
         choices=[
             questionary.Choice(display, value=value) for display, value in DEPTH_OPTIONS
         ],
-        instruction="\n- Use arrow keys to navigate\n- Press Enter to select",
+        instruction="\n- Setas para navegar\n- Enter para selecionar",
         style=questionary.Style(
             [
                 ("selected", "fg:yellow noinherit"),
@@ -190,7 +190,7 @@ def select_research_depth() -> int:
     ).ask()
 
     if choice is None:
-        console.print("\n[red]No research depth selected. Exiting...[/red]")
+        console.print("\n[red]Nenhuma profundidade selecionada. A sair...[/red]")
         exit(1)
 
     return choice
@@ -260,12 +260,12 @@ def select_openrouter_model(mode: str) -> str:
     top = (mainstream or models)[:5]
 
     choices = [questionary.Choice(name, value=mid) for name, mid in top]
-    choices.append(questionary.Choice("Custom model ID", value="custom"))
+    choices.append(questionary.Choice("ID de modelo personalizado", value="custom"))
 
     choice = questionary.select(
-        f"Select Your [{mode.title()}-Thinking] OpenRouter Model (latest available):",
+        f"Seleciona o Modelo [{mode.title()}-Thinking] OpenRouter (mais recentes):",
         choices=choices,
-        instruction="\n- Use arrow keys to navigate\n- Press Enter to select",
+        instruction="\n- Setas para navegar\n- Enter para selecionar",
         style=questionary.Style([
             ("selected", "fg:magenta noinherit"),
             ("highlighted", "fg:magenta noinherit"),
@@ -274,19 +274,19 @@ def select_openrouter_model(mode: str) -> str:
     ).ask()
 
     if choice is None:
-        console.print("\n[red]No model selected. Exiting...[/red]")
+        console.print("\n[red]Nenhum modelo selecionado. A sair...[/red]")
         exit(1)
     if choice == "custom":
         return _require_text(
-            "Enter OpenRouter model ID (e.g. google/gemma-4-26b-a4b-it):",
-            "Please enter a model ID.",
+            "ID do modelo OpenRouter (ex: google/gemma-4-26b-a4b-it):",
+            "Introduz um ID de modelo.",
         )
     return choice
 
 
 def _prompt_custom_model_id() -> str:
     """Prompt user to type a custom model ID."""
-    return _require_text("Enter model ID:", "Please enter a model ID.")
+    return _require_text("ID do modelo:", "Introduz um ID de modelo.")
 
 
 def _select_model(provider: str, mode: str) -> str:
@@ -296,17 +296,17 @@ def _select_model(provider: str, mode: str) -> str:
 
     if provider.lower() == "azure":
         return _require_text(
-            f"Enter Azure deployment name ({mode}-thinking):",
-            "Please enter a deployment name.",
+            f"Nome do deployment Azure ({mode}-thinking):",
+            "Introduz um nome de deployment.",
         )
 
     choice = questionary.select(
-        f"Select Your [{mode.title()}-Thinking LLM Engine]:",
+        f"Seleciona o Motor LLM [{mode.title()}-Thinking]:",
         choices=[
             questionary.Choice(display, value=value)
             for display, value in get_model_options(provider, mode)
         ],
-        instruction="\n- Use arrow keys to navigate\n- Press Enter to select",
+        instruction="\n- Setas para navegar\n- Enter para selecionar",
         style=questionary.Style(
             [
                 ("selected", "fg:magenta noinherit"),
@@ -317,7 +317,7 @@ def _select_model(provider: str, mode: str) -> str:
     ).ask()
 
     if choice is None:
-        console.print(f"\n[red]No {mode} thinking llm engine selected. Exiting...[/red]")
+        console.print(f"\n[red]Nenhum motor LLM {mode} thinking selecionado. A sair...[/red]")
         exit(1)
 
     if choice == "custom":
@@ -391,13 +391,13 @@ def resolve_backend_url(
 def prompt_openai_compatible_url() -> str:
     """Prompt for a custom OpenAI-compatible endpoint base URL."""
     url = questionary.text(
-        "Enter the OpenAI-compatible base URL "
-        "(e.g. http://localhost:8000/v1 for vLLM, http://localhost:1234/v1 for LM Studio):",
+        "URL base OpenAI-compatible "
+        "(ex: http://localhost:8000/v1 para vLLM, http://localhost:1234/v1 para LM Studio):",
         validate=lambda x: x.strip().startswith(("http://", "https://"))
-        or "Enter a URL starting with http:// or https://",
+        or "Introduz um URL que comece com http:// ou https://",
     ).ask()
     if not url:
-        console.print("\n[red]No endpoint URL provided. Exiting...[/red]")
+        console.print("\n[red]Nenhum URL fornecido. A sair...[/red]")
         exit(1)
     return url.strip()
 
@@ -407,12 +407,12 @@ def select_llm_provider() -> tuple[str, str | None]:
     PROVIDERS = _llm_provider_table()
 
     choice = questionary.select(
-        "Select your LLM Provider:",
+        "Seleciona o Fornecedor LLM:",
         choices=[
             questionary.Choice(display, value=(provider_key, url))
             for display, provider_key, url in PROVIDERS
         ],
-        instruction="\n- Use arrow keys to navigate\n- Press Enter to select",
+        instruction="\n- Setas para navegar\n- Enter para selecionar",
         style=questionary.Style(
             [
                 ("selected", "fg:magenta noinherit"),
@@ -423,7 +423,7 @@ def select_llm_provider() -> tuple[str, str | None]:
     ).ask()
 
     if choice is None:
-        console.print("\n[red]No LLM provider selected. Exiting...[/red]")
+        console.print("\n[red]Nenhum fornecedor LLM selecionado. A sair...[/red]")
         exit(1)
 
     provider, url = choice
@@ -456,11 +456,11 @@ def ask_anthropic_effort() -> str | None:
     common selection range.
     """
     return questionary.select(
-        "Select Effort Level:",
+        "Nível de Esforço de Raciocínio:",
         choices=[
-            questionary.Choice("High (recommended)", "high"),
-            questionary.Choice("Medium (balanced)", "medium"),
-            questionary.Choice("Low (faster, cheaper)", "low"),
+            questionary.Choice("Médio (Padrão)", "medium"),
+            questionary.Choice("Alto (Mais aprofundado)", "high"),
+            questionary.Choice("Baixo (Mais rápido)", "low"),
         ],
         style=questionary.Style([
             ("selected", "fg:cyan noinherit"),

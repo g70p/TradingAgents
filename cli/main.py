@@ -54,7 +54,7 @@ console = Console()
 
 app = typer.Typer(
     name="TradingAgents",
-    help="TradingAgents CLI: Multi-Agents LLM Financial Trading Framework",
+    help="TradingAgents CLI: Framework Multi-Agente LLM para Trading Financeiro · PT-PT",
     add_completion=True,  # Enable shell completion
 )
 
@@ -63,18 +63,18 @@ app = typer.Typer(
 class MessageBuffer:
     # Fixed teams that always run (not user-selectable)
     FIXED_AGENTS = {
-        "Research Team": ["Bull Researcher", "Bear Researcher", "Research Manager"],
-        "Trading Team": ["Trader"],
-        "Risk Management": ["Aggressive Analyst", "Neutral Analyst", "Conservative Analyst"],
-        "Portfolio Management": ["Portfolio Manager"],
+        "Equipa de Investigação": ["Bull Researcher", "Bear Researcher", "Research Manager"],
+        "Equipa de Trading": ["Trader"],
+        "Gestão de Risco": ["Aggressive Analyst", "Neutral Analyst", "Conservative Analyst"],
+        "Gestão de Portfólio": ["Portfolio Manager"],
     }
 
     # Analyst name mapping
     ANALYST_MAPPING = {
-        "market": "Market Analyst",
-        "social": "Sentiment Analyst",
-        "news": "News Analyst",
-        "fundamentals": "Fundamentals Analyst",
+        "market": "Analista de Mercado",
+        "social": "Analista de Sentimento",
+        "news": "Analista de Notícias",
+        "fundamentals": "Analista de Fundamentais",
     }
 
     # Report section mapping: section -> (analyst_key for filtering, finalizing_agent)
@@ -189,13 +189,13 @@ class MessageBuffer:
         if latest_section and latest_content:
             # Format the current section for display
             section_titles = {
-                "market_report": "Market Analysis",
-                "sentiment_report": "Social Sentiment",
-                "news_report": "News Analysis",
-                "fundamentals_report": "Fundamentals Analysis",
-                "investment_plan": "Research Team Decision",
-                "trader_investment_plan": "Trading Team Plan",
-                "final_trade_decision": "Portfolio Management Decision",
+                "market_report": "Análise de Mercado",
+                "sentiment_report": "Análise de Sentimento",
+                "news_report": "Análise de Notícias",
+                "fundamentals_report": "Análise de Fundamentais",
+                "investment_plan": "Decisão da Investigação",
+                "trader_investment_plan": "Plano de Trading",
+                "final_trade_decision": "Decisão do Gestor de Portfólio",
             }
             self.current_report = (
                 f"### {section_titles[latest_section]}\n{latest_content}"
@@ -276,9 +276,9 @@ def update_display(layout, spinner_text=None, stats_handler=None, start_time=Non
     # Header with welcome message
     layout["header"].update(
         Panel(
-            "[bold green]Welcome to TradingAgents CLI[/bold green]\n"
-            "[dim]© [Tauric Research](https://github.com/TauricResearch)[/dim]",
-            title="Welcome to TradingAgents",
+            "[bold green]Bem-vindo ao TradingAgents CLI[/bold green]\n"
+            "[dim]© [Tauric Research](https://github.com/TauricResearch) · fork PT-PT [G70P](https://github.com/G70P)[/dim]",
+            title="Bem-vindo ao TradingAgents",
             border_style="green",
             padding=(1, 2),
             expand=True,
@@ -295,22 +295,22 @@ def update_display(layout, spinner_text=None, stats_handler=None, start_time=Non
         padding=(0, 2),  # Add horizontal padding
         expand=True,  # Make table expand to fill available space
     )
-    progress_table.add_column("Team", style="cyan", justify="center", width=20)
-    progress_table.add_column("Agent", style="green", justify="center", width=20)
-    progress_table.add_column("Status", style="yellow", justify="center", width=20)
+    progress_table.add_column("Equipa", style="cyan", justify="center", width=22)
+    progress_table.add_column("Agente", style="magenta", justify="center", width=24)
+    progress_table.add_column("Estado", style="green", justify="center")
 
-    # Group agents by team - filter to only include agents in agent_status
+    # Add rows for all agents grouped by team
     all_teams = {
-        "Analyst Team": [
-            "Market Analyst",
-            "Sentiment Analyst",
-            "News Analyst",
-            "Fundamentals Analyst",
+        "Equipa de Analistas": [
+            "Analista de Mercado",
+            "Analista de Sentimento",
+            "Analista de Notícias",
+            "Analista de Fundamentais",
         ],
-        "Research Team": ["Bull Researcher", "Bear Researcher", "Research Manager"],
-        "Trading Team": ["Trader"],
-        "Risk Management": ["Aggressive Analyst", "Neutral Analyst", "Conservative Analyst"],
-        "Portfolio Management": ["Portfolio Manager"],
+        "Equipa de Investigação": ["Bull Researcher", "Bear Researcher", "Research Manager"],
+        "Equipa de Trading": ["Trader"],
+        "Gestão de Risco": ["Aggressive Analyst", "Neutral Analyst", "Conservative Analyst"],
+        "Gestão de Portfólio": ["Portfolio Manager"],
     }
 
     # Filter teams to only include agents that are in agent_status
