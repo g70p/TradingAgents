@@ -39,8 +39,7 @@ from tradingagents.agents.utils.structured import (
     bind_structured,
     invoke_structured_or_freetext,
 )
-from tradingagents.dataflows.reddit import fetch_reddit_posts
-from tradingagents.dataflows.stocktwits import fetch_stocktwits_messages
+from tradingagents.dataflows.google_news import fetch_google_news_sentiment
 
 
 def _seven_days_back(trade_date: str) -> str:
@@ -67,16 +66,14 @@ def create_sentiment_analyst(llm):
         # returns a string (no exceptions surface from here), so the LLM
         # always sees something — either real data or a clear placeholder.
         news_block = get_news.func(ticker, start_date, end_date)
-        stocktwits_block = fetch_stocktwits_messages(ticker, limit=30)
-        reddit_block = fetch_reddit_posts(ticker)
+        google_block = fetch_google_news_sentiment(ticker, limit=12)
 
         system_message = _build_system_message(
             ticker=ticker,
             start_date=start_date,
             end_date=end_date,
             news_block=news_block,
-            stocktwits_block=stocktwits_block,
-            reddit_block=reddit_block,
+            google_block=google_block,
         )
 
         prompt = ChatPromptTemplate.from_messages(
@@ -124,50 +121,42 @@ def _build_system_message(
     start_date: str,
     end_date: str,
     news_block: str,
-    stocktwits_block: str,
-    reddit_block: str,
+    google_block: str,
 ) -> str:
     """Assemble the sentiment-analyst system message with structured data blocks."""
-    return f"""És um analista de sentimento de mercado financeiro. A tua tarefa é produzir um relatório de sentimento abrangente para {ticker}, cobrindo o período de {start_date} a {end_date}, com base em três fontes de dados complementares que já foram recolhidas para ti.
+    return f"""És um analista de sentimento de mercado financeiro. A tua tarefa é produzir um relatório de sentimento abrangente para {ticker}, cobrindo o período de {start_date} a {end_date}, com base em fontes de dados complementares que já foram recolhidas para ti.
 
 ## Fontes de dados (pré-recolhidas, neste prompt)
 
-### Títulos de notícias — Yahoo Finance, últimos 7 dias
+### Notícias via Yahoo Finance, últimos 7 dias
 Enquadramento institucional. Baseado em factos, sinal de movimento mais lento.
 
-<start_of_news>
+<start_of_yahoo_news>
 {news_block}
-<end_of_news>
+<end_of_yahoo_news>
 
-### Mensagens StockTwits — plataforma social de traders de retalho indexada por cashtag
-Sinal de movimento rápido. Cada mensagem contém uma etiqueta de sentimento atribuída pelo utilizador (Bullish / Bearish / sem etiqueta) juntamente com o corpo da mensagem.
+### Notícias via Google News (PT + EN)
+Cobertura alargada de fontes noticiosas. Inclui imprensa portuguesa e internacional. Manchetes de múltiplas fontes para uma visão diversificada do sentimento mediático.
 
-<start_of_stocktwits>
-{stocktwits_block}
-<end_of_stocktwits>
-
-### Publicações do Reddit — r/wallstreetbets, r/stocks, r/investing (últimos 7 dias)
-Discussão da comunidade. Sinal de envolvimento através da pontuação de upvotes e contagem de comentários. O caráter do subreddit importa (r/wallstreetbets é frequentemente contrário/eufórico; r/stocks mais comedido; r/investing de mais longo prazo).
-
-<start_of_reddit>
-{reddit_block}
-<end_of_reddit>
+<start_of_google_news>
+{google_block}
+<end_of_google_news>
 
 ## Como analisar estes dados (melhores práticas)
 
-1. **Lê o rácio Bullish/Bearish do StockTwits como um sinal líder de sentimento de retalho.** Uma divisão 70/30 bullish/bearish é moderadamente bullish; ≥90/10 pode indicar sobre-extensão e risco contrário; 50/50 é incerteza. O tamanho da amostra importa — baseia as proporções na contagem real de mensagens, não apenas em percentagens.
+1. **Lê as manchetes do Yahoo Finance como sinal institucional.** São factuais, de movimento mais lento, focadas em resultados, regulação e adoção.
 
-2. **Procura divergências entre fontes.** Se o enquadramento das notícias é bearish mas o StockTwits é esmagadoramente bullish, esse desalinhamento é em si um sinal — pode significar que o retalho está a apostar numa tese que o fluxo de notícias ainda não captou (ou vice-versa, que o retalho está a perseguir enquanto os institucionais estão cautelosos).
+2. **Usa o Google News para sentir o tom mediático geral.** As manchetes refletem o enquadramento que o público geral está a receber. Se as manchetes são consistentemente negativas, o sentimento de retalho tende a seguir.
 
-3. **Pondera as publicações do Reddit pelo envolvimento.** Um tópico com 400 upvotes / 200 comentários reflete atenção da comunidade; uma publicação com 3 upvotes é ruído. Lê os excertos do corpo para contexto — o título sozinho muitas vezes engana.
+3. **Procura divergências entre as duas fontes.** Se o Yahoo Finance está neutro mas o Google News está repleto de manchetes alarmistas, isso é um sinal de que o sentimento de retalho pode estar em pânico — ou vice-versa.
 
-4. **Distingue opinião de evento.** Um título de notícia ("Nvidia anuncia acordo de 500M com a Corning") é um evento; uma publicação no StockTwits ("a comprar NVDA, isto vai disparar") é opinião. Ambos são inputs mas devem ser ponderados de forma diferente nas tuas conclusões.
+4. **Distingue opinião de evento.** Uma notícia institucional ("BCE mantém taxas") é um evento; uma manchete do Google News ("Mercados em pânico com decisão do BCE") é enquadramento. Ambos são inputs mas devem ser ponderados de forma diferente.
 
 5. **Identifica temas narrativos recorrentes.** Que tópico aparece repetidamente em várias fontes? Essa é a narrativa dominante que está a impulsionar o sentimento atual.
 
-6. **Sê honesto sobre as limitações dos dados.** Se o StockTwits devolveu apenas um punhado de mensagens, ou se uma ou mais fontes devolveram um placeholder "<indisponível>", a leitura de sentimento é menos robusta — assinala isto explicitamente no campo `confidence` e na narrativa. Se as fontes estão silenciosas sobre um determinado subreddit, diz isso.
+6. **Sê honesto sobre as limitações dos dados.** Se uma das fontes devolveu poucos resultados ou um placeholder "<indisponível>", a leitura de sentimento é menos robusta — assinala isto explicitamente no campo `confidence` e na narrativa.
 
-7. **Identifica catalisadores e riscos** que emergem das várias fontes — notícias de próximos resultados, lançamentos de produtos, ameaças competitivas, manchetes macro, etc.
+7. **Identifica catalisadores e riscos** que emergem das várias fontes — notícias de resultados, lançamentos de produtos, decisões de bancos centrais, tensões geopolíticas.
 
 8. **Sentimento passado não é preditivo.** Enquadra as tuas conclusões como sinal para o trader ponderar juntamente com fundamentais e técnicos, não como uma previsão de preço.
 

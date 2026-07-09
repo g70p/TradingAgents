@@ -17,6 +17,7 @@ from .errors import (
     VendorNotConfiguredError,
     VendorRateLimitError,
 )
+from .ecb_data import get_ecb_macro_indicators, get_ecb_macro_summary as get_ecb_macro_data
 from .fred import get_macro_data as get_fred_macro_data
 from .polymarket import get_prediction_markets as get_polymarket_prediction_markets
 from .y_finance import (
@@ -135,6 +136,7 @@ VENDOR_METHODS = {
     },
     # macro_data
     "get_macro_indicators": {
+        "ecb": get_ecb_macro_indicators,
         "fred": get_fred_macro_data,
     },
     # prediction_markets
