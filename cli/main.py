@@ -536,7 +536,6 @@ def _build_quick_selections_for(ticker: str) -> dict:
 
 def _run_analysis_standalone(selections: dict, config: dict) -> None:
     """Corre o pipeline via propagate() — o caminho mais testado e estável."""
-    stats_handler = StatsCallbackHandler()
     selected_analyst_keys = [a for a in ANALYST_ORDER if a in set(selections.get("analysts", []))]
     if not selected_analyst_keys:
         selected_analyst_keys = list(ANALYST_ORDER)
@@ -545,7 +544,6 @@ def _run_analysis_standalone(selections: dict, config: dict) -> None:
         selected_analyst_keys,
         config=config,
         debug=False,  # debug stream quebra com 'Bull Researcher' no LangGraph
-        callbacks=[stats_handler],
     )
     message_buffer.init_for_analysis(selected_analyst_keys)
     start_time = time.time()
@@ -1156,7 +1154,6 @@ def run_analysis(checkpoint: bool | None = None, quick: bool = False):
         selected_analyst_keys,
         config=config,
         debug=False,  # debug stream quebra com 'Bull Researcher' no LangGraph
-        callbacks=[stats_handler],
     )
 
     # Initialize message buffer with selected analysts
