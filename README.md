@@ -38,6 +38,7 @@ fontes de dados e arquitectura de agentes diferentes.
 | **Cripto** | Básico | **Multi-exchange (Binance→Bybit→OKX) + CoinGecko + mempool.space** |
 | **Sessões de Mercado** | Não | **Fiscal de Horários (Euronext, NYSE, Crypto 24/7)** |
 | **Modelo de Relatórios** | Livre | **Estruturado AVA (Visão Geral, Mapa Mental, Quadros, Gates)** |
+| **Output Telegram** | Não | **Professor 👨‍🏫 — explicação simples, 4 parágrafos, zero jargão** |
 
 ---
 
@@ -263,6 +264,11 @@ print(decision)
 │                          ▼                                          │
 │               ┌─────────────────────┐                               │
 │               │  Gestor Portfólio    │  ← Decisão final consolidada  │
+│               └──────────┬──────────┘                               │
+│                          ▼                                          │
+│               ┌─────────────────────┐                               │
+│               │     Professor 👨‍🏫   │  ← Explicação simples         │
+│               │  (para Telegram)    │     para investidores          │
 │               └─────────────────────┘                               │
 └──────────────────────────────────────────────────────────────────┘
 ```
