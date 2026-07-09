@@ -11,8 +11,8 @@ config = DEFAULT_CONFIG.copy()
 # Initialize with custom config
 ta = TradingAgentsGraph(debug=True, config=config)
 
-# forward propagate
-_, decision = ta.propagate("NVDA", "2024-05-10")
+# forward propagate — example with a PSI-20 stock
+_, decision = ta.propagate("EDP.LS", "2026-07-09")
 print(decision)
 
 # Memorize mistakes and reflect
