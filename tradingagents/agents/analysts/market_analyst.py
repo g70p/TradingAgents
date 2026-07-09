@@ -52,6 +52,15 @@ Antes de escreveres o relatório final, chama get_verified_market_snapshot para 
 
 Escreve um relatório muito detalhado e matizado das tendências que observares. Fornece informações específicas e acionáveis com evidências de suporte para ajudar os traders a tomar decisões informadas."""
             + """ Certifica-te de anexar uma tabela Markdown no final do relatório para organizar os pontos-chave, de forma organizada e fácil de ler."""
+            + """ Estrutura o teu relatório final obrigatoriamente assim:
+
+## 1. Visão Geral — contexto imediato e tendência dominante.
+## 2. Mapa Mental — árvore textual da análise.
+## 3. Quadro de Sinais — tabela com indicadores, valores, sinal e interpretação.
+## 4. Análise Detalhada — evidências, datas e preços concretos.
+## 5. Riscos e Catalisadores — lista de riscos descendentes e catalisadores ascendentes.
+## 6. Gate de Validação — checklist de integridade dos dados.
+## 7. Notas de Continuidade — o que Bull/Bear/Trader precisam de saber."""
             + get_language_instruction()
         )
 

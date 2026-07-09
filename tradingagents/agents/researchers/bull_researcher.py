@@ -1,7 +1,7 @@
 from tradingagents.agents.utils.agent_utils import (
-    get_instrument_context_from_state,
     get_language_instruction,
 )
+from tradingagents.agents.utils.report_consolidator import consolidate_analyst_reports
 
 
 def create_bull_researcher(llm):
@@ -9,44 +9,71 @@ def create_bull_researcher(llm):
         investment_debate_state = state["investment_debate_state"]
         history = investment_debate_state.get("history", "")
         bull_history = investment_debate_state.get("bull_history", "")
-
         current_response = investment_debate_state.get("current_response", "")
-        market_research_report = state["market_report"]
-        sentiment_report = state["sentiment_report"]
-        news_report = state["news_report"]
-        fundamentals_report = state["fundamentals_report"]
-        instrument_context = get_instrument_context_from_state(state)
         asset_type = state.get("asset_type", "stock")
         target_label = "ação" if asset_type == "stock" else "ativo"
-        fundamentals_label = (
-            "Relatório de fundamentais da empresa"
-            if asset_type == "stock"
-            else "Relatório de fundamentais do ativo (pode estar indisponível para cripto)"
+        trade_date = state["trade_date"]
+        ticker = state.get("company_of_interest", "N/D")
+
+        # Consolidate all 4 analyst reports into a single AVA-structured document
+        consolidated = consolidate_analyst_reports(
+            market_report=state.get("market_report", ""),
+            sentiment_report=state.get("sentiment_report", ""),
+            news_report=state.get("news_report", ""),
+            fundamentals_report=state.get("fundamentals_report", ""),
+            ticker=ticker,
+            trade_date=trade_date,
         )
 
-        prompt = f"""És um Analista Touro (Bull) a defender o investimento na {target_label}. A tua tarefa é construir um caso forte, baseado em evidências, que enfatize o potencial de crescimento, vantagens competitivas e indicadores de mercado positivos. Utiliza a investigação e os dados fornecidos para responder a preocupações e contrariar argumentos bearish de forma eficaz.
+        prompt = f"""És um Analista Touro (Bull) a defender o investimento na {target_label}. A tua tarefa é construir um caso forte, baseado em evidências, que enfatize o potencial de crescimento, vantagens competitivas e indicadores de mercado positivos.
 
-Pontos-chave a focar:
-- Potencial de Crescimento: Destaca as oportunidades de mercado da empresa, projeções de receitas e escalabilidade.
-- Vantagens Competitivas: Enfatiza fatores como produtos únicos, marca forte ou posicionamento dominante no mercado.
-- Indicadores Positivos: Usa saúde financeira, tendências do setor e notícias positivas recentes como evidência.
-- Contra-argumentos ao Urso: Analisa criticamente o argumento bearish com dados específicos e raciocínio sólido, respondendo às preocupações de forma aprofundada e mostrando por que a perspetiva bull tem maior mérito.
-- Envolvimento: Apresenta o teu argumento num estilo conversacional, interagindo diretamente com os pontos do analista bear e debatendo eficazmente em vez de apenas listar dados.
+Recebeste um RELATÓRIO CONSOLIDADO que unifica as análises de 4 especialistas independentes. Usa-o como a tua única fonte de dados.
 
-Recursos disponíveis:
-{instrument_context}
-Relatório de análise de mercado: {market_research_report}
-Relatório de sentimento nas redes sociais: {sentiment_report}
-Notícias mundiais mais recentes: {news_report}
-{fundamentals_label}: {fundamentals_report}
-Histórico da conversa do debate: {history}
-Último argumento do urso: {current_response}
-Usa esta informação para apresentar um argumento bull convincente, refutar as preocupações do urso e participar num debate dinâmico que demonstre os pontos fortes da posição bull.
+Estrutura da tua resposta (obrigatório):
+
+## 1. Visão Geral Bull
+Resumo executivo do teu caso de investimento — o que torna esta {target_label} atrativa AGORA.
+
+## 2. Mapa Mental do Caso Bull
+```
+Caso Bull — {ticker}
+├── Catalisador Principal
+├── Vantagens Competitivas
+├── Indicadores Positivos
+└── Refutação de Riscos
+```
+
+## 3. Análise Baseada em Evidências
+Usa dados concretos do relatório consolidado para sustentar cada ponto.
+
+## 4. Refutação do Argumento Urso
+Se houver argumento bear prévio, responde ponto por ponto com contra-evidências.
+
+## 5. Gate de Validação
+- [ ] Todos os argumentos baseiam-se em dados do relatório consolidado.
+- [ ] Nenhum valor foi inventado.
+- [ ] As refutações são específicas e baseadas em evidências.
+
+## 6. Notas para o Debate
+O que o Urso e o Gestor de Investigação precisam de saber.
+
+---
+
+### RELATÓRIO CONSOLIDADO (fonte única de verdade):
+{consolidated}
+
+### Histórico do debate:
+{history}
+
+### Último argumento do urso:
+{current_response}
+
+Usa esta informação para apresentar um argumento bull convincente, refutar as preocupações do urso e participar num debate dinâmico.
 """ + get_language_instruction()
 
         response = llm.invoke(prompt)
 
-        argument = f"Analista Touro: {response.content}"
+        argument = f"Analista Touro:\n{response.content}"
 
         new_investment_debate_state = {
             "history": history + "\n" + argument,

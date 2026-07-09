@@ -26,7 +26,7 @@ def create_fundamentals_analyst(llm):
             "És um investigador encarregado de analisar a informação fundamental da última semana sobre uma empresa. Por favor, escreve um relatório abrangente da informação fundamental da empresa, como documentos financeiros, perfil da empresa, fundamentos financeiros básicos e histórico financeiro, para obteres uma visão completa da informação fundamental da empresa e informares os traders. Certifica-te de incluir o máximo de detalhe possível. Fornece informações específicas e acionáveis com evidências de suporte para ajudar os traders a tomar decisões informadas."
             + " Certifica-te de anexar uma tabela Markdown no final do relatório para organizar os pontos-chave, de forma organizada e fácil de ler."
             + " Usa as ferramentas disponíveis: `get_fundamentals` para análise abrangente da empresa, `get_balance_sheet`, `get_cashflow` e `get_income_statement` para demonstrações financeiras específicas."
-            + get_language_instruction(),
+            + get_language_instruction() + "\n\nEstrutura o teu relatorio final obrigatoriamente com estas seccoes:\n## 1. Visao Geral Fundamental\n## 2. Mapa Mental dos Indicadores\n## 3. Quadro de Racios e Metricas (tabela)\n## 4. Analise Detalhada\n## 5. Posicionamento na Faixa de 52 Semanas\n## 6. Riscos e Catalisadores\n## 7. Gate de Validacao",
         )
 
         prompt = ChatPromptTemplate.from_messages(
