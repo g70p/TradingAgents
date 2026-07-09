@@ -539,12 +539,9 @@ def _run_analysis_standalone(selections: dict, config: dict) -> None:
     stats_handler = StatsCallbackHandler()
 
     selected_set = set(selections["analysts"])
-    selected_analyst_keys = [
-        key for display, key in ANALYST_ORDER
-        if key.value in selected_set
-    ]
+    selected_analyst_keys = [a for a in ANALYST_ORDER if a in selected_set]
     if not selected_analyst_keys:
-        selected_analyst_keys = [key for _, key in ANALYST_ORDER]
+        selected_analyst_keys = list(ANALYST_ORDER)
     analyst_execution_plan = build_analyst_execution_plan(selected_analyst_keys)
     analyst_wall_time_tracker = AnalystWallTimeTracker(analyst_execution_plan)
 
