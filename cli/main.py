@@ -547,6 +547,14 @@ def _run_analysis_standalone(selections: dict, config: dict) -> None:
     )
 
     try:
+        # Pre-flight: verificar se o ticker existe
+        import yfinance as yf
+        info = yf.Ticker(selections["ticker"]).info
+        if not info or info.get("regularMarketPrice") is None and info.get("currentPrice") is None:
+            console.print(f"\n[red]❌ O símbolo '{selections['ticker']}' não foi encontrado no Yahoo Finance.[/red]")
+            console.print("[yellow]Verifica o ticker e tenta novamente. Exemplos: BCP.LS, EDP.LS, BTC-USD, NVDA[/yellow]")
+            return
+
         console.print(f"[dim]A analisar... (pode demorar 2-3 min)[/dim]")
         final_state, decision = graph.propagate(
             selections["ticker"],
@@ -1141,7 +1149,14 @@ def run_analysis(checkpoint: bool | None = None, quick: bool = False):
 
     config = _build_run_config(selections, checkpoint)
 
-    # Create stats callback handler for tracking LLM/tool calls
+    # Pre-flight: verificar se o ticker existe
+    import yfinance as yf
+    info = yf.Ticker(selections["ticker"]).info
+    if not info or (info.get("regularMarketPrice") is None and info.get("currentPrice") is None):
+        console.print(f"\n[red]❌ O símbolo '{selections['ticker']}' não foi encontrado no Yahoo Finance.[/red]")
+        console.print("[yellow]Verifica o ticker e tenta novamente. Exemplos: BCP.LS, EDP.LS, BTC-USD, NVDA[/yellow]")
+        return
+
     stats_handler = StatsCallbackHandler()
 
     # Normalize analyst selection to predefined order (selection is a 'set', order is fixed)
