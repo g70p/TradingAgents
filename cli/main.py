@@ -535,15 +535,11 @@ def _build_quick_selections_for(ticker: str) -> dict:
 
 
 def _run_analysis_standalone(selections: dict, config: dict) -> None:
-    """Corre o pipeline completo sem UI interativa (usado pelo menu rápido)."""
+    """Corre o pipeline via propagate() — o caminho mais testado e estável."""
     stats_handler = StatsCallbackHandler()
-
-    selected_set = set(selections["analysts"])
-    selected_analyst_keys = [a for a in ANALYST_ORDER if a in selected_set]
+    selected_analyst_keys = [a for a in ANALYST_ORDER if a in set(selections.get("analysts", []))]
     if not selected_analyst_keys:
         selected_analyst_keys = list(ANALYST_ORDER)
-    analyst_execution_plan = build_analyst_execution_plan(selected_analyst_keys)
-    analyst_wall_time_tracker = AnalystWallTimeTracker(analyst_execution_plan)
 
     graph = TradingAgentsGraph(
         selected_analyst_keys,
@@ -552,61 +548,19 @@ def _run_analysis_standalone(selections: dict, config: dict) -> None:
         callbacks=[stats_handler],
     )
     message_buffer.init_for_analysis(selected_analyst_keys)
-
     start_time = time.time()
-    results_dir = Path(config["results_dir"]) / selections["ticker"] / selections["analysis_date"]
-    results_dir.mkdir(parents=True, exist_ok=True)
-    (results_dir / "reports").mkdir(parents=True, exist_ok=True)
 
-    layout = create_layout()
-    spinner_text = f"A analisar {selections['ticker']} em {selections['analysis_date']}..."
-    update_display(layout, spinner_text, stats_handler=stats_handler, start_time=start_time)
-
-    # Inject context
-    instrument_context = graph.resolve_instrument_context(selections["ticker"], selections["asset_type"])
-    past_context = graph.memory_log.get_past_context(selections["ticker"])
-    state = graph.propagator.create_initial_state(
-        selections["ticker"], selections["analysis_date"],
-        asset_type=selections["asset_type"], instrument_context=instrument_context, past_context=past_context,
-    )
-    if selections["asset_type"] == "crypto":
-        from tradingagents.dataflows.crypto_onchain import get_crypto_onchain_summary
-        onchain = get_crypto_onchain_summary(selections["ticker"])
-        if onchain and "indisponível" not in onchain.split("\n")[0].lower():
-            state["crypto_onchain_data"] = onchain
-    from tradingagents.dataflows.market_sessions import get_market_context_for_state
-    mc = get_market_context_for_state(selections["ticker"], selections["asset_type"])
-    if mc:
-        state["market_session_context"] = mc
-
-    args = graph.propagator.get_graph_args(callbacks=[stats_handler])
-    trace = []
-    analysis_error = None
     try:
-        for chunk in graph.graph.stream(state, **args):
-            for message in chunk.get("messages", []):
-                msg_id = getattr(message, "id", None)
-                if msg_id is not None and hasattr(message_buffer, '_processed_message_ids'):
-                    if msg_id in message_buffer._processed_message_ids:
-                        continue
-                    message_buffer._processed_message_ids.add(msg_id)
-                msg_type, content = classify_message_type(message)
-                if content and content.strip():
-                    message_buffer.add_message(msg_type, content)
-            update_display(layout, stats_handler=stats_handler, start_time=start_time)
-            trace.append(chunk)
+        final_state, decision = graph.propagate(
+            selections["ticker"],
+            selections["analysis_date"],
+            asset_type=selections["asset_type"],
+        )
     except Exception as e:
-        analysis_error = str(e)
-        console.print(f"\n[red]❌ Erro: {analysis_error}[/red]")
+        console.print(f"\n[red]❌ Erro: {e}[/red]")
         return
 
-    final_state = {}
-    for chunk in trace:
-        final_state.update(chunk)
-
-    update_display(layout, stats_handler=stats_handler, start_time=start_time)
     console.print(f"\n[bold cyan]Análise Concluída![/bold cyan]")
-    decision = final_state.get("final_trade_decision", "")
     if decision:
         console.print(Markdown(str(decision)[:800]))
 

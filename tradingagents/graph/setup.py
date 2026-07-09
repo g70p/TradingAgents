@@ -53,12 +53,10 @@ class GraphSetup:
         self.config = config or {}
 
     def _get_llm_for(self, agent_type: str) -> Any:
-        """Get the appropriate LLM for an agent type, applying per-agent temperature if configured.
+        """Get the appropriate LLM for an agent type.
 
         All trading agents use deep_thinking_llm for maximum analysis quality.
-        Temperature overrides are applied from config['agent_temperatures'].
-
-        Agent types: analyst, researcher, trader, risk_manager, portfolio_manager
+        Temperature overrides from config are applied when supported by the provider.
         """
         llm = self.deep_thinking_llm
 
@@ -66,11 +64,10 @@ class GraphSetup:
         if agent_type in agent_temps:
             temp = agent_temps[agent_type]
             if temp is not None:
-                # LangChain LLMs support bind() to override runtime params
                 try:
                     llm = llm.bind(temperature=temp)
-                except (TypeError, AttributeError):
-                    pass  # Not all providers support per-call temperature binding
+                except Exception:
+                    pass  # Provider doesn't support per-call temperature
 
         return llm
 
