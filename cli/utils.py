@@ -222,7 +222,7 @@ def _fetch_openrouter_models() -> list[tuple[str, str]]:
         models.sort(key=lambda m: m.get("created") or 0, reverse=True)
         return [(m.get("name") or m["id"], m["id"]) for m in models]
     except Exception as e:
-        console.print(f"\n[yellow]Could not fetch OpenRouter models: {e}[/yellow]")
+        console.print(f"\n[yellow]Erro ao procurar modelos OpenRouter: {e}[/yellow]")
         return []
 
 
@@ -238,7 +238,7 @@ def _require_text(message: str, hint: str) -> str:
         validate=lambda x: len(x.strip()) > 0 or hint,
     ).ask()
     if response is None:
-        console.print("\n[red]Cancelled. Exiting...[/red]")
+        console.print("\n[red]Cancelado. A sair...[/red]")
         exit(1)
     return response.strip()
 
@@ -653,20 +653,20 @@ def ensure_api_key(provider: str) -> str | None:
 def ask_output_language() -> str:
     """Ask for report output language."""
     choice = questionary.select(
-        "Select Output Language:",
+        "Seleciona o Idioma de Saída:",
         choices=[
-            questionary.Choice("English (default)", "English"),
+            questionary.Choice("Português (padrão)", "Português"),
+            questionary.Choice("English", "English"),
             questionary.Choice("Chinese (中文)", "Chinese"),
             questionary.Choice("Japanese (日本語)", "Japanese"),
             questionary.Choice("Korean (한국어)", "Korean"),
             questionary.Choice("Hindi (हिन्दी)", "Hindi"),
             questionary.Choice("Spanish (Español)", "Spanish"),
-            questionary.Choice("Portuguese (Português)", "Portuguese"),
             questionary.Choice("French (Français)", "French"),
             questionary.Choice("German (Deutsch)", "German"),
             questionary.Choice("Arabic (العربية)", "Arabic"),
             questionary.Choice("Russian (Русский)", "Russian"),
-            questionary.Choice("Custom language", "custom"),
+            questionary.Choice("Idioma personalizado", "custom"),
         ],
         style=questionary.Style([
             ("selected", "fg:yellow noinherit"),
@@ -675,14 +675,13 @@ def ask_output_language() -> str:
         ]),
     ).ask()
 
-    # Output language has a sensible default, so a cancel falls back to English
-    # rather than exiting the run (unlike the required model/provider prompts).
+    # Output language — cancel falls back to Português (not English)
     if choice is None:
-        return "English"
+        return "Português"
     if choice == "custom":
         return (questionary.text(
-            "Enter language name (e.g. Turkish, Vietnamese, Thai, Indonesian):",
-            validate=lambda x: len(x.strip()) > 0 or "Please enter a language name.",
-        ).ask() or "").strip() or "English"
+            "Nome do idioma (ex: Turco, Vietnamita, Tailandês, Indonésio):",
+            validate=lambda x: len(x.strip()) > 0 or "Introduz o nome do idioma.",
+        ).ask() or "").strip() or "Português"
 
     return choice

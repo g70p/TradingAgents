@@ -1093,7 +1093,7 @@ def run_analysis(checkpoint: bool | None = None):
 
         # Create spinner text
         spinner_text = (
-            f"Analyzing {selections['ticker']} on {selections['analysis_date']}..."
+            f"A analisar {selections['ticker']} em {selections['analysis_date']}..."
         )
         update_display(layout, spinner_text, stats_handler=stats_handler, start_time=start_time)
 
@@ -1245,7 +1245,7 @@ def run_analysis(checkpoint: bool | None = None):
     console.print(f"[dim]{analyst_wall_time_tracker.format_summary()}[/dim]")
 
     # Prompt to save report
-    save_choice = typer.prompt("Save report?", default="Y").strip().upper()
+    save_choice = typer.prompt("Guardar relatório?", default="S").strip().upper()
     if save_choice in ("Y", "YES", ""):
         timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
         default_path = Path.cwd() / "reports" / f"{selections['ticker']}_{timestamp}"
@@ -1278,7 +1278,7 @@ def analyze(
     clear_checkpoints: bool = typer.Option(
         False,
         "--clear-checkpoints",
-        help="Delete all saved checkpoints before running (force fresh start).",
+        help="Apagar todos os checkpoints antes de correr (força início limpo).",
     ),
 ):
     if clear_checkpoints:
