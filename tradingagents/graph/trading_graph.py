@@ -418,11 +418,9 @@ class TradingAgentsGraph:
             args.setdefault("config", {}).setdefault("configurable", {})["thread_id"] = tid
 
         if self.debug:
-            # Debug: stream and print intermediate messages (non-blocking path)
             trace = []
             last_printed = None
-            try:
-                for chunk in self.graph.stream(init_agent_state, **args):
+            for chunk in self.graph.stream(init_agent_state, **args):
                 if chunk["messages"]:
                     msg = chunk["messages"][-1]
                     # Nodes after the trader don't append to messages, so the
