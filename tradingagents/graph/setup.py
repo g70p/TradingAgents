@@ -16,6 +16,7 @@ from tradingagents.agents import (
     create_neutral_debator,
     create_news_analyst,
     create_portfolio_manager,
+    create_professor,
     create_research_manager,
     create_sentiment_analyst,
     create_trader,
@@ -83,6 +84,7 @@ class GraphSetup:
         neutral_analyst = create_neutral_debator(self.deep_thinking_llm)
         conservative_analyst = create_conservative_debator(self.deep_thinking_llm)
         portfolio_manager_node = create_portfolio_manager(self.deep_thinking_llm)
+        professor_node = create_professor(self.deep_thinking_llm)
 
         # Create workflow
         workflow = StateGraph(AgentState)
