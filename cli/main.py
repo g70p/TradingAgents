@@ -544,7 +544,7 @@ def _run_analysis_standalone(selections: dict, config: dict) -> None:
     graph = TradingAgentsGraph(
         selected_analyst_keys,
         config=config,
-        debug=True,
+        debug=False,  # debug stream quebra com 'Bull Researcher' no LangGraph
         callbacks=[stats_handler],
     )
     message_buffer.init_for_analysis(selected_analyst_keys)
@@ -1155,7 +1155,7 @@ def run_analysis(checkpoint: bool | None = None, quick: bool = False):
     graph = TradingAgentsGraph(
         selected_analyst_keys,
         config=config,
-        debug=True,
+        debug=False,  # debug stream quebra com 'Bull Researcher' no LangGraph
         callbacks=[stats_handler],
     )
 
