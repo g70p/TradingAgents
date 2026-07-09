@@ -1302,6 +1302,9 @@ def run_analysis(checkpoint: bool | None = None, quick: bool = False):
     # Post-analysis prompts (outside Live context for clean interaction)
     console.print("\n[bold cyan]Análise Concluída![/bold cyan]\n")
     console.print(f"[dim]{analyst_wall_time_tracker.format_summary()}[/dim]")
+    if decision:
+        console.print(f"\n[bold]Decisão Final:[/bold] {decision}")
+        console.print(f"[dim]{'─' * 60}[/dim]")
 
     # Prompt to save report
     save_choice = typer.prompt("Guardar relatório?", default="S").strip().upper()
