@@ -564,13 +564,13 @@ def get_user_selections():
     if os.environ.get("TRADINGAGENTS_OUTPUT_LANGUAGE"):
         output_language = DEFAULT_CONFIG["output_language"]
         console.print(
-            f"[green]✓ Output language from environment:[/green] {output_language}"
+            f"[green]✓ Idioma do ambiente:[/green] {output_language}"
         )
     else:
         console.print(
             create_question_box(
                 "Passo 3: Idioma de Saída",
-                "Select the language for analyst reports and final decision"
+                "Seleciona o idioma para os relatórios e decisão final"
             )
         )
         output_language = ask_output_language()
@@ -583,7 +583,7 @@ def get_user_selections():
     )
     selected_analysts = select_analysts(asset_type)
     console.print(
-        f"[green]Selected analysts:[/green] {', '.join(analyst.value for analyst in selected_analysts)}"
+        f"[green]Analistas selecionados:[/green] {', '.join(analyst.value for analyst in selected_analysts)}"
     )
 
     # Step 5: Research depth (skipped when both round counts are set via env).
@@ -596,9 +596,9 @@ def get_user_selections():
     if depth_from_env:
         selected_research_depth = DEFAULT_CONFIG["max_debate_rounds"]
         console.print(
-            f"[green]✓ Research depth from environment:[/green] "
+            f"[green]✓ Profundidade do ambiente:[/green] "
             f"{DEFAULT_CONFIG['max_debate_rounds']} debate / "
-            f"{DEFAULT_CONFIG['max_risk_discuss_rounds']} risk rounds"
+            f"{DEFAULT_CONFIG['max_risk_discuss_rounds']} rondas de risco"
         )
     else:
         console.print(
@@ -618,7 +618,7 @@ def get_user_selections():
         backend_url = resolve_backend_url(
             selected_llm_provider, env_url=DEFAULT_CONFIG["backend_url"]
         )
-        console.print(f"[green]✓ LLM provider from environment:[/green] {selected_llm_provider}")
+        console.print(f"[green]✓ Fornecedor LLM do ambiente:[/green] {selected_llm_provider}")
         console.print(f"[green]✓ Backend URL:[/green] {backend_url}")
         # Still confirm/persist the API key so the run doesn't fail later.
         ensure_api_key(selected_llm_provider)
@@ -661,13 +661,22 @@ def get_user_selections():
         # doesn't fail later at the first API call.
         ensure_api_key(selected_llm_provider)
 
-    # Step 7: Thinking agents (skipped when either model is set via environment)
+    # Step 7: Thinking agents (skipped when either model is set via environment,
+    # OR when provider is DeepSeek — we use deep thinking for all agents).
+    provider_is_deepseek = selected_llm_provider.lower() == "deepseek"
     if os.environ.get("TRADINGAGENTS_QUICK_THINK_LLM") or os.environ.get("TRADINGAGENTS_DEEP_THINK_LLM"):
         selected_shallow_thinker = DEFAULT_CONFIG["quick_think_llm"]
         selected_deep_thinker = DEFAULT_CONFIG["deep_think_llm"]
         console.print(
-            f"[green]✓ Thinking agents from environment:[/green] "
+            f"[green]✓ Motores do ambiente:[/green] "
             f"quick={selected_shallow_thinker}, deep={selected_deep_thinker}"
+        )
+    elif provider_is_deepseek:
+        selected_shallow_thinker = DEFAULT_CONFIG["quick_think_llm"]
+        selected_deep_thinker = DEFAULT_CONFIG["deep_think_llm"]
+        console.print(
+            f"[green]✓ DeepSeek:[/green] deep thinking em todos os agentes "
+            f"(quick={selected_shallow_thinker}, deep={selected_deep_thinker})"
         )
     else:
         console.print(
@@ -678,17 +687,14 @@ def get_user_selections():
         selected_shallow_thinker = select_shallow_thinking_agent(selected_llm_provider)
         selected_deep_thinker = select_deep_thinking_agent(selected_llm_provider)
 
-    # Step 8: Provider-specific reasoning/thinking configuration. Each knob is
-    # settable via its TRADINGAGENTS_* env var; when that var is set (or the
-    # provider itself came from env) the prompt is skipped and the configured
-    # value is used — same env-precedence rule as the steps above. None = each
-    # provider's own default.
+    # Step 8: Provider-specific reasoning/thinking configuration.
+    # Skipped for DeepSeek (not applicable) and when provider came from env.
     thinking_level = None
     reasoning_effort = None
     anthropic_effort = None
 
     provider_lower = selected_llm_provider.lower()
-    if provider_from_env:
+    if provider_from_env or provider_is_deepseek:
         thinking_level = DEFAULT_CONFIG["google_thinking_level"]
         reasoning_effort = DEFAULT_CONFIG["openai_reasoning_effort"]
         anthropic_effort = DEFAULT_CONFIG["anthropic_effort"]
@@ -988,9 +994,53 @@ def _build_run_config(selections: dict, checkpoint: bool | None) -> dict:
     return config
 
 
-def run_analysis(checkpoint: bool | None = None):
-    # First get all user selections
-    selections = get_user_selections()
+def _build_quick_selections() -> dict:
+    """Constrói selections a partir do .env, sem prompts interativos.
+
+    Usa o ticker passado como argumento (ex: 'tradingagents analyze --quick BCP.LS')
+    ou EDP.LS como padrão. Data = hoje. Tudo o resto vem do .env/DEFAULT_CONFIG.
+    """
+    import sys
+
+    # Ticker: 1º argumento posicional depois de 'analyze', ou padrão EDP.LS
+    args = sys.argv[sys.argv.index("analyze") + 1:] if "analyze" in sys.argv else []
+    ticker = "EDP.LS"
+    for arg in args:
+        if not arg.startswith("-") and arg != "--quick":
+            ticker = arg
+            break
+
+    from cli.utils import detect_asset_type, normalize_ticker_symbol
+    ticker = normalize_ticker_symbol(ticker)
+    asset_type = detect_asset_type(ticker)
+    analysis_date = datetime.datetime.now().strftime("%Y-%m-%d")
+
+    console.print(f"[green]🚀 Modo rápido:[/green] {ticker} ({asset_type.value}) — {analysis_date}")
+    console.print(f"[dim]Usando configuração do .env para todos os parâmetros.[/dim]")
+
+    return {
+        "ticker": ticker,
+        "asset_type": asset_type.value,
+        "analysis_date": analysis_date,
+        "analysts": ["market", "social", "news", "fundamentals"],
+        "research_depth": DEFAULT_CONFIG["max_debate_rounds"],
+        "llm_provider": DEFAULT_CONFIG["llm_provider"],
+        "backend_url": DEFAULT_CONFIG.get("backend_url"),
+        "shallow_thinker": DEFAULT_CONFIG["quick_think_llm"],
+        "deep_thinker": DEFAULT_CONFIG["deep_think_llm"],
+        "google_thinking_level": DEFAULT_CONFIG.get("google_thinking_level"),
+        "openai_reasoning_effort": DEFAULT_CONFIG.get("openai_reasoning_effort"),
+        "anthropic_effort": DEFAULT_CONFIG.get("anthropic_effort"),
+        "output_language": DEFAULT_CONFIG["output_language"],
+    }
+
+
+def run_analysis(checkpoint: bool | None = None, quick: bool = False):
+    if quick:
+        # Modo rápido: ticker do argumento ou EDP.LS, resto do .env
+        selections = _build_quick_selections()
+    else:
+        selections = get_user_selections()
 
     config = _build_run_config(selections, checkpoint)
 
@@ -1099,17 +1149,32 @@ def run_analysis(checkpoint: bool | None = None):
 
         # Initialize state and get graph args with callbacks.
         # Resolve the instrument identity once here so all agents anchor to
-        # the real company (#814); the CLI builds state directly rather than
-        # going through propagate(), so this must happen on the CLI path too.
+        # the real company (#814). Also inject memory, crypto, and market
+        # session context — same as TradingAgentsGraph._run_graph().
         instrument_context = graph.resolve_instrument_context(
             selections["ticker"], selections["asset_type"]
         )
+        past_context = graph.memory_log.get_past_context(selections["ticker"])
         init_agent_state = graph.propagator.create_initial_state(
             selections["ticker"],
             selections["analysis_date"],
             asset_type=selections["asset_type"],
             instrument_context=instrument_context,
+            past_context=past_context,
         )
+
+        # Inject crypto on-chain data (mirrors _run_graph)
+        if selections["asset_type"] == "crypto":
+            from tradingagents.dataflows.crypto_onchain import get_crypto_onchain_summary
+            onchain = get_crypto_onchain_summary(selections["ticker"])
+            if onchain and "indisponível" not in onchain.split("\n")[0].lower():
+                init_agent_state["crypto_onchain_data"] = onchain
+
+        # Inject market session context (mirrors _run_graph)
+        from tradingagents.dataflows.market_sessions import get_market_context_for_state
+        market_ctx = get_market_context_for_state(selections["ticker"], selections["asset_type"])
+        if market_ctx:
+            init_agent_state["market_session_context"] = market_ctx
         # Pass callbacks to graph config for tool execution tracking
         # (LLM tracking is handled separately via LLM constructor)
         args = graph.propagator.get_graph_args(callbacks=[stats_handler])
@@ -1155,15 +1220,15 @@ def run_analysis(checkpoint: bool | None = None):
                     update_research_team_status("in_progress")
                 if bull_hist:
                     message_buffer.update_report_section(
-                        "investment_plan", f"### Bull Researcher Analysis\n{bull_hist}"
+                        "investment_plan", f"### Análise do Touro\n{bull_hist}"
                     )
                 if bear_hist:
                     message_buffer.update_report_section(
-                        "investment_plan", f"### Bear Researcher Analysis\n{bear_hist}"
+                        "investment_plan", f"### Análise do Urso\n{bear_hist}"
                     )
                 if judge:
                     message_buffer.update_report_section(
-                        "investment_plan", f"### Research Manager Decision\n{judge}"
+                        "investment_plan", f"### Decisão do Gestor de Investigação\n{judge}"
                     )
                     update_research_team_status("completed")
                     message_buffer.update_agent_status("Trader", "in_progress")
@@ -1241,29 +1306,29 @@ def run_analysis(checkpoint: bool | None = None):
         update_display(layout, stats_handler=stats_handler, start_time=start_time)
 
     # Post-analysis prompts (outside Live context for clean interaction)
-    console.print("\n[bold cyan]Analysis Complete![/bold cyan]\n")
+    console.print("\n[bold cyan]Análise Concluída![/bold cyan]\n")
     console.print(f"[dim]{analyst_wall_time_tracker.format_summary()}[/dim]")
 
     # Prompt to save report
     save_choice = typer.prompt("Guardar relatório?", default="S").strip().upper()
-    if save_choice in ("Y", "YES", ""):
+    if save_choice in ("S", "Y", "YES", "SIM", ""):
         timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
         default_path = Path.cwd() / "reports" / f"{selections['ticker']}_{timestamp}"
         save_path_str = typer.prompt(
-            "Save path (press Enter for default)",
+            "Caminho para guardar (Enter para usar o padrão)",
             default=str(default_path)
         ).strip()
         save_path = Path(save_path_str)
         try:
             report_file = save_report_to_disk(final_state, selections["ticker"], save_path)
-            console.print(f"\n[green]✓ Report saved to:[/green] {save_path.resolve()}")
-            console.print(f"  [dim]Complete report:[/dim] {report_file.name}")
+            console.print(f"\n[green]✓ Relatório guardado em:[/green] {save_path.resolve()}")
+            console.print(f"  [dim]Relatório completo:[/dim] {report_file.name}")
         except Exception as e:
-            console.print(f"[red]Error saving report: {e}[/red]")
+            console.print(f"[red]Erro ao guardar relatório: {e}[/red]")
 
     # Prompt to display full report
-    display_choice = typer.prompt("\nDisplay full report on screen?", default="Y").strip().upper()
-    if display_choice in ("Y", "YES", ""):
+    display_choice = typer.prompt("\nMostrar relatório completo?", default="S").strip().upper()
+    if display_choice in ("S", "Y", "YES", "SIM", ""):
         display_complete_report(final_state)
 
 
@@ -1280,12 +1345,17 @@ def analyze(
         "--clear-checkpoints",
         help="Apagar todos os checkpoints antes de correr (força início limpo).",
     ),
+    quick: bool = typer.Option(
+        False,
+        "--quick",
+        help="Modo rápido: usa .env para todos os parâmetros, salta prompts interativos.",
+    ),
 ):
     if clear_checkpoints:
         from tradingagents.graph.checkpointer import clear_all_checkpoints
         n = clear_all_checkpoints(DEFAULT_CONFIG["data_cache_dir"])
-        console.print(f"[yellow]Cleared {n} checkpoint(s).[/yellow]")
-    run_analysis(checkpoint=checkpoint)
+        console.print(f"[yellow]{n} checkpoint(s) apagados.[/yellow]")
+    run_analysis(checkpoint=checkpoint, quick=quick)
 
 
 if __name__ == "__main__":
