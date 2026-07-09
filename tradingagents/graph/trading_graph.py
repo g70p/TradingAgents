@@ -29,6 +29,7 @@ from tradingagents.agents.utils.agent_utils import (
 )
 from tradingagents.agents.utils.memory import TradingMemoryLog
 from tradingagents.dataflows.config import set_config
+from tradingagents.dataflows.crypto_onchain import get_crypto_onchain_summary
 from tradingagents.dataflows.utils import safe_ticker_component
 from tradingagents.default_config import DEFAULT_CONFIG
 from tradingagents.llm_clients import create_llm_client
@@ -111,6 +112,7 @@ class TradingAgentsGraph:
             self.deep_thinking_llm,
             self.tool_nodes,
             self.conditional_logic,
+            config=self.config,
         )
 
         self.propagator = Propagator(
@@ -221,17 +223,25 @@ class TradingAgentsGraph:
                 return benchmark
         return benchmark_map.get("", "SPY")
 
+    def _get_holding_days(self, asset_type: str = "stock") -> int:
+        """Get the configured holding period for an asset type."""
+        periods = self.config.get("holding_periods", {})
+        return periods.get(asset_type, periods.get("default", 5))
+
     def _fetch_returns(
-        self, ticker: str, trade_date: str, holding_days: int = 5,
-        benchmark: str = "SPY",
+        self, ticker: str, trade_date: str, holding_days: int = None,
+        benchmark: str = "SPY", asset_type: str = "stock",
     ) -> tuple[float | None, float | None, int | None]:
         """Fetch raw and alpha return for ticker over holding_days from trade_date.
 
         ``benchmark`` is the index used as the alpha baseline (resolved by the
-        caller via ``_resolve_benchmark``). Returns ``(raw_return, alpha_return,
-        actual_holding_days)`` or ``(None, None, None)`` if price data is
-        unavailable (too recent, delisted, or network error).
+        caller via ``_resolve_benchmark``). ``asset_type`` selects the holding
+        period from config when ``holding_days`` is not explicitly provided.
+        Returns ``(raw_return, alpha_return, actual_holding_days)`` or
+        ``(None, None, None)`` if price data is unavailable.
         """
+        if holding_days is None:
+            holding_days = self._get_holding_days(asset_type)
         from tradingagents.dataflows.symbol_utils import normalize_symbol
 
         try:
@@ -387,6 +397,13 @@ class TradingAgentsGraph:
             past_context=past_context,
             instrument_context=instrument_context,
         )
+
+        # Inject crypto on-chain data into the state when analysing crypto assets
+        if asset_type == "crypto":
+            onchain_data = get_crypto_onchain_summary(company_name)
+            if onchain_data and "indisponível" not in onchain_data.split("\n")[0].lower():
+                init_agent_state["crypto_onchain_data"] = onchain_data
+                logger.info("Injected crypto on-chain data for %s", company_name)
         args = self.propagator.get_graph_args()
 
         # Inject thread_id so same ticker+date resumes, different date starts fresh.

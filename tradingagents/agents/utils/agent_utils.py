@@ -42,6 +42,7 @@ __all__ = [
     "build_instrument_context",
     "resolve_instrument_identity",
     "get_instrument_context_from_state",
+    "get_crypto_onchain_context",
     "get_language_instruction",
     "create_msg_delete",
 ]
@@ -185,6 +186,20 @@ def get_instrument_context_from_state(state: Mapping[str, Any]) -> str:
         str(state["company_of_interest"]),
         state.get("asset_type", "stock"),
     )
+
+
+def get_crypto_onchain_context(state: Mapping[str, Any]) -> str:
+    """Return crypto on-chain data context if available in the state.
+
+    When the run is for a crypto asset, the graph injects funding rates,
+    open interest, and long/short ratios into the state. This function
+    extracts that data so agents can include it in their analysis.
+    Returns empty string for non-crypto runs or when data is unavailable.
+    """
+    data = state.get("crypto_onchain_data", "")
+    if not data or not isinstance(data, str):
+        return ""
+    return f"\n\n{data}"
 
 
 def create_msg_delete():

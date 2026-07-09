@@ -1,6 +1,7 @@
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 
 from tradingagents.agents.utils.agent_utils import (
+    get_crypto_onchain_context,
     get_indicators,
     get_instrument_context_from_state,
     get_language_instruction,
@@ -14,6 +15,7 @@ def create_market_analyst(llm):
     def market_analyst_node(state):
         current_date = state["trade_date"]
         instrument_context = get_instrument_context_from_state(state)
+        crypto_context = get_crypto_onchain_context(state)
 
         tools = [
             get_stock_data,
@@ -76,7 +78,7 @@ Escreve um relatório muito detalhado e matizado das tendências que observares.
         prompt = prompt.partial(system_message=system_message)
         prompt = prompt.partial(tool_names=", ".join([tool.name for tool in tools]))
         prompt = prompt.partial(current_date=current_date)
-        prompt = prompt.partial(instrument_context=instrument_context)
+        prompt = prompt.partial(instrument_context=instrument_context + crypto_context)
 
         chain = prompt | llm.bind_tools(tools)
 
