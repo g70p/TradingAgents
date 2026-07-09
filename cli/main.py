@@ -570,6 +570,11 @@ def _run_analysis_standalone(selections: dict, config: dict) -> None:
     console.print(f"\n[bold cyan]Análise Concluída![/bold cyan]")
     if decision:
         console.print(Markdown(str(decision)[:800]))
+    # Professor's simple explanation for end users
+    prof_msg = final_state.get("professor_message", "")
+    if prof_msg:
+        console.print(f"\n[bold]📱 Mensagem para Telegram:[/bold]\n")
+        console.print(prof_msg)
 
     try:
         report_path = graph.save_reports(final_state, selections["ticker"])
@@ -1320,6 +1325,11 @@ def run_analysis(checkpoint: bool | None = None, quick: bool = False):
     if decision:
         console.print(f"\n[bold]Decisão Final:[/bold] {decision}")
         console.print(f"[dim]{'─' * 60}[/dim]")
+    # Professor message
+    prof_msg = final_state.get("professor_message", "")
+    if prof_msg:
+        console.print(f"\n[bold]📱 Mensagem para Telegram:[/bold]\n")
+        console.print(prof_msg)
 
     # Prompt to save report
     save_choice = typer.prompt("Guardar relatório?", default="S").strip().upper()
