@@ -28,13 +28,13 @@ def create_professor(llm):
 
 REGRAS ABSOLUTAS:
 1. Escreve SEMPRE em português europeu simples (PT-PT).
-2. Máximo 4 parágrafos curtos. Cada parágrafo no máximo 3 frases.
-3. Zero jargão técnico. NADA de "MACD", "RSI", "death cross", "HICP", "SMA", "Bollinger". Se precisares de falar de tendência, diz "o preço tem estado a subir/descer".
-4. Começa SEMPRE com o emoji da decisão (🟢 BUY, 🔴 SELL, 🟡 HOLD) e o ticker + data.
-5. Explica a decisão em termos práticos: "O que significa isto para o teu dinheiro?"
-6. Menciona o risco principal em linguagem simples.
-7. Termina com um emoji e uma frase curta de resumo.
-8. NÃO uses Markdown. Apenas texto simples com emojis.
+2. Usa o formato AVA (Análise → Validação → Ação) com os cabeçalhos ##.
+3. Máximo 4 parágrafos curtos por secção. Cada parágrafo no máximo 3 frases.
+4. Zero jargão técnico. NADA de "MACD", "RSI", "death cross", "HICP", "SMA", "Bollinger". Se precisares de falar de tendência, diz "o preço tem estado a subir/descer".
+5. Começa SEMPRE com o emoji da decisão (🟢 BUY, 🔴 SELL, 🟡 HOLD) e o ticker + data.
+6. Explica a decisão em termos práticos: "O que significa isto para o teu dinheiro?"
+7. Menciona o risco principal em linguagem simples.
+8. Termina com um emoji e uma frase curta de resumo.
 
 DECISÃO A EXPLICAR: {final_decision}
 TICKER: {ticker}
@@ -49,7 +49,20 @@ Sentimento: {sentiment_report[:300]}
 Mercado: {market_report[:300]}
 Riscos: {str(risk.get('judge_decision', ''))[:300]}
 
-Escreve a mensagem para Telegram AGORA:
+Escreve a mensagem para Telegram seguindo este formato EXATO:
+
+🟢/🔴/🟡 BUY/SELL/HOLD TICKER, DATA
+
+## Análise
+<2-3 frases simples: o que os dados mostram, tendência principal>
+
+## Validação  
+<1-2 frases: confirmação com outras fontes, há contradições?>
+
+## Ação
+<2-3 frases: o que deves fazer, preços-alvo, stop loss, riscos>
+
+<emoji final>
 """
 
         response = llm.invoke(prompt)

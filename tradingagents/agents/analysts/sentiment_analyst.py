@@ -14,11 +14,8 @@ the LLM is invoked and injects them into the prompt as structured blocks:
   3. Reddit posts        — r/wallstreetbets, r/stocks, r/investing
 
 The agent does not use tool-calling; the data is in the prompt from
-turn 0. Output uses the structured-output pattern (json_schema for
-OpenAI/xAI, response_schema for Gemini, tool-use for Anthropic), falling
-back to free-text generation for providers that lack native support, so
-the sentiment header (band + score + confidence) is deterministic across
-runs and providers instead of free-form per-model prose.
+turn 0. Output is free-text markdown — no structured-output wrapper,
+no fallback warnings.
 
 See: https://github.com/TauricResearch/TradingAgents/issues/557
 See: https://github.com/TauricResearch/TradingAgents/issues/796
@@ -29,15 +26,10 @@ from datetime import datetime, timedelta
 from langchain_core.messages import AIMessage
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 
-from tradingagents.agents.schemas import SentimentReport, render_sentiment_report
 from tradingagents.agents.utils.agent_utils import (
     get_instrument_context_from_state,
     get_language_instruction,
     get_news,
-)
-from tradingagents.agents.utils.structured import (
-    bind_structured,
-    invoke_structured_or_freetext,
 )
 from tradingagents.dataflows.google_news import fetch_google_news_sentiment
 from tradingagents.dataflows.news_aggregator import fetch_news_multi_source
@@ -55,8 +47,6 @@ def create_sentiment_analyst(llm):
     report via structured output (with a free-text fallback for providers
     that do not support it).
     """
-    structured_llm = bind_structured(llm, SentimentReport, "Sentiment Analyst")
-
     def sentiment_analyst_node(state):
         ticker = state["company_of_interest"]
         end_date = state["trade_date"]
@@ -103,13 +93,8 @@ def create_sentiment_analyst(llm):
         # data is already in the prompt.
         formatted_messages = prompt.format_messages(messages=state["messages"])
 
-        report_text = invoke_structured_or_freetext(
-            structured_llm,
-            llm,
-            formatted_messages,
-            render_sentiment_report,
-            "Sentiment Analyst",
-        )
+        response = llm.invoke(formatted_messages)
+        report_text = str(response.content) if hasattr(response, 'content') else str(response)
 
         return {
             "messages": [AIMessage(content=report_text)],
@@ -130,6 +115,9 @@ def _build_system_message(
 ) -> str:
     """Assemble the sentiment-analyst system message with structured data blocks."""
     return f"""És um analista de sentimento de mercado financeiro. A tua tarefa é produzir um relatório de sentimento abrangente para {ticker}, cobrindo o período de {start_date} a {end_date}, com base em fontes de dados complementares que já foram recolhidas para ti.
+
+**⚠️ FORMATO OBRIGATÓRIO — AVA ⚠️**
+Toda a tua resposta DEVE seguir o método AVA (Análise → Validação → Ação).
 
 ## Fontes de dados (pré-recolhidas, neste prompt)
 
@@ -171,6 +159,11 @@ Cobertura multi-fonte de mercados globais. Inclui comunicados oficiais de bolsas
 7. **Identifica catalisadores e riscos** que emergem das várias fontes — notícias de resultados, lançamentos de produtos, decisões de bancos centrais, tensões geopolíticas.
 
 8. **Sentimento passado não é preditivo.** Enquadra as tuas conclusões como sinal para o trader ponderar juntamente com fundamentais e técnicos, não como uma previsão de preço.
+
+## AVA — Análise, Validação, Ação
+- **Análise**: <síntese dos sinais de sentimento das várias fontes; tendência dominante>
+- **Validação**: <cross-check entre fontes; há divergências? o Google News contradiz o Yahoo Finance?>
+- **Ação**: <recomendação de sentimento final: overall_band + overall_score + confidence>
 
 ## Campos de saída
 

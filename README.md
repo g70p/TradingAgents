@@ -37,8 +37,8 @@ fontes de dados e arquitectura de agentes diferentes.
 | **Dimensionamento** | Manual | **ATR + Kelly Criterion** |
 | **Cripto** | Básico | **Multi-exchange (Binance→Bybit→OKX) + CoinGecko + mempool.space** |
 | **Sessões de Mercado** | Não | **Fiscal de Horários (Euronext, NYSE, Crypto 24/7)** |
-| **Modelo de Relatórios** | Livre | **Estruturado AVA (Visão Geral, Mapa Mental, Quadros, Gates)** |
-| **Output Telegram** | Não | **Professor 👨‍🏫 — explicação simples, 4 parágrafos, zero jargão** |
+| **Modelo de Relatórios** | Livre | **AVA (Análise → Validação → Ação) em todos os agentes** |
+| **Output Telegram** | Não | **Professor 👨‍🏫 — explicação simples, formato AVA, zero jargão** |
 
 ---
 
@@ -220,7 +220,7 @@ print(decision)
 | Ticker | Ativo |
 |---|---|
 | `BTC-USD` | Bitcoin (com dados on-chain) |
-| `ETH-USD` | Ethereum |
+| `BNB-USD` | Binance Coin |
 
 ### Ações Estrangeiras
 | Ticker | Empresa |

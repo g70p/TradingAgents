@@ -1,28 +1,19 @@
 """Portfolio Manager: synthesises the risk-analyst debate into the final decision.
 
-Uses LangChain's ``with_structured_output`` so the LLM produces a typed
-``PortfolioDecision`` directly, in a single call.  The result is rendered
-back to markdown for storage in ``final_trade_decision`` so memory log,
-CLI display, and saved reports continue to consume the same shape they do
-today.  When a provider does not expose structured output, the agent falls
-back gracefully to free-text generation.
+Uses plain LLM invocation — the prompt includes the expected output format
+inline, and the result is stored directly in ``final_trade_decision``.
+No structured-output wrapper, no fallback, no unnecessary warnings.
 """
 
 from __future__ import annotations
 
-from tradingagents.agents.schemas import PortfolioDecision, render_pm_decision
 from tradingagents.agents.utils.agent_utils import (
     get_instrument_context_from_state,
     get_language_instruction,
 )
-from tradingagents.agents.utils.structured import (
-    bind_structured,
-    invoke_structured_or_freetext,
-)
 
 
 def create_portfolio_manager(llm):
-    structured_llm = bind_structured(llm, PortfolioDecision, "Portfolio Manager")
 
     def portfolio_manager_node(state) -> dict:
         instrument_context = get_instrument_context_from_state(state)
@@ -40,6 +31,10 @@ def create_portfolio_manager(llm):
         )
 
         prompt = f"""Enquanto Gestor de Portfólio, sintetiza o debate dos analistas de risco e emite a decisão final de trading.
+
+**⚠️ FORMATO OBRIGATÓRIO — AVA ⚠️**
+Toda a tua resposta DEVE seguir o método AVA (Análise → Validação → Ação).
+NÃO escrevas texto livre fora desta estrutura. Começa SEMPRE com "## Decisão Final".
 
 {instrument_context}
 
@@ -80,13 +75,8 @@ def create_portfolio_manager(llm):
 
 Sê decisivo e fundamenta cada conclusão em evidências específicas dos analistas.{get_language_instruction()}"""
 
-        final_trade_decision = invoke_structured_or_freetext(
-            structured_llm,
-            llm,
-            prompt,
-            render_pm_decision,
-            "Portfolio Manager",
-        )
+        response = llm.invoke(prompt)
+        final_trade_decision = str(response.content) if hasattr(response, 'content') else str(response)
 
         new_risk_debate_state = {
             "judge_decision": final_trade_decision,

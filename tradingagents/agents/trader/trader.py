@@ -10,21 +10,15 @@ import functools
 
 from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 
-from tradingagents.agents.schemas import TraderProposal, render_trader_proposal
 from tradingagents.agents.utils.agent_utils import (
     get_instrument_context_from_state,
     get_language_instruction,
 )
 from tradingagents.agents.utils.atr_sizing_tool import get_atr_position_sizing
-from tradingagents.agents.utils.structured import (
-    bind_structured,
-    invoke_structured_or_freetext,
-)
 
 
 def create_trader(llm):
-    structured_llm = bind_structured(llm, TraderProposal, "Trader")
-    llm_with_tools = llm.bind_tools([TraderProposal])
+    llm_with_tools = llm.bind_tools([])
 
     def trader_node(state, name):
         company_name = state["company_of_interest"]
@@ -53,6 +47,7 @@ def create_trader(llm):
                 "role": "system",
                 "content": (
                     "És um agente de trading a analisar dados de mercado para tomar decisões de investimento. "
+                    "⚠️ Usa SEMPRE o formato AVA (Análise → Validação → Ação) na tua resposta. "
                     "Com base na tua análise, fornece uma recomendação específica para comprar, vender ou manter. "
                     "Fundamenta o teu raciocínio nos relatórios dos analistas e no plano de investigação. "
                     "Usa os dados de dimensionamento ATR fornecidos abaixo para definir stop-loss e tamanho de posição."
@@ -68,19 +63,16 @@ def create_trader(llm):
                     f"sentimento das redes sociais. Usa este plano como base para avaliar a tua próxima "
                     f"decisão de trading.\\n\\nPlano de Investimento Proposto: {investment_plan}\\n\\n"
                     f"### Dimensionamento ATR (pré-calculado)\\n{atr_sizing_text}\\n\\n"
-                    f"Produz a tua recomendação final de trading para {company_name}."
+                    f"Produz a tua recomendação final de trading para {company_name} no formato AVA:\\n\\n"
+                    f"## Decisão Final\\n**Rating**: <Comprar|Sobreponderar|Manter|Subponderar|Vender>\\n**Ação**: <Buy|Overweight|Hold|Underweight|Sell>\\n**Preço de Entrada**: <float>\\n**Stop Loss**: <float>\\n**Dimensionamento**: <% do portfólio>\\n\\n"
+                    f"## AVA — Análise, Validação, Ação\\n- **Análise**: <síntese dos dados de mercado e plano de investimento>\\n- **Validação**: <cross-check com ATR; os níveis de SL/entrada fazem sentido?>\\n- **Ação**: <proposta de transação concreta e justificada>"
                 ),
             },
         ]
 
         # Single LLM call — ATR data already injected in the prompt
-        trader_plan = invoke_structured_or_freetext(
-            structured_llm,
-            llm,
-            messages,
-            render_trader_proposal,
-            "Trader",
-        )
+        response = llm.invoke(messages)
+        trader_plan = str(response.content) if hasattr(response, 'content') else str(response)
 
         return {
             "messages": [AIMessage(content=trader_plan)],

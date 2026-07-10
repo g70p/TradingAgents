@@ -1,20 +1,14 @@
-"""Research Manager: turns the bull/bear debate into a structured investment plan for the trader."""
+"""Research Manager: turns the bull/bear debate into an investment plan for the trader."""
 
 from __future__ import annotations
 
-from tradingagents.agents.schemas import ResearchPlan, render_research_plan
 from tradingagents.agents.utils.agent_utils import (
     get_instrument_context_from_state,
     get_language_instruction,
 )
-from tradingagents.agents.utils.structured import (
-    bind_structured,
-    invoke_structured_or_freetext,
-)
 
 
 def create_research_manager(llm):
-    structured_llm = bind_structured(llm, ResearchPlan, "Research Manager")
 
     def research_manager_node(state) -> dict:
         instrument_context = get_instrument_context_from_state(state)
@@ -23,6 +17,9 @@ def create_research_manager(llm):
         investment_debate_state = state["investment_debate_state"]
 
         prompt = f"""Enquanto Gestor de Investigação e facilitador do debate, a tua função é avaliar criticamente esta ronda do debate e apresentar um plano de investimento claro e acionável para o trader.
+
+**⚠️ FORMATO OBRIGATÓRIO — AVA ⚠️**
+Toda a tua resposta DEVE seguir o método AVA (Análise → Validação → Ação).
 
 {instrument_context}
 
@@ -40,15 +37,17 @@ Assume uma posição clara sempre que os argumentos mais fortes do debate o just
 ---
 
 **Histórico do Debate:**
-{history}""" + get_language_instruction()
+{history}
 
-        investment_plan = invoke_structured_or_freetext(
-            structured_llm,
-            llm,
-            prompt,
-            render_research_plan,
-            "Research Manager",
-        )
+---
+
+## AVA — Análise, Validação, Ação
+- **Análise**: <pesa os argumentos bull vs bear, identifica o lado com maior peso de evidências>
+- **Validação**: <confirmação cruzada com os dados de mercado; há divergências?>
+- **Ação**: <plano de investimento claro e acionável: rating + justificação>""" + get_language_instruction()
+
+        response = llm.invoke(prompt)
+        investment_plan = str(response.content) if hasattr(response, 'content') else str(response)
 
         new_investment_debate_state = {
             "judge_decision": investment_plan,
