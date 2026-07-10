@@ -1139,15 +1139,12 @@ def _build_run_config(selections: dict, checkpoint: bool | None) -> dict:
     return config
 
 
-def run_analysis(checkpoint: bool | None = None, quick: bool = False):
+def run_analysis(checkpoint: bool | None = None, quick: bool = False, ticker: str | None = None):
     if quick:
-        # Modo rápido (CLI): ticker do argumento ou EDP.LS
-        import sys as _sys
-        args = _sys.argv[_sys.argv.index("analyze") + 1:] if "analyze" in _sys.argv else []
-        ticker = "EDP.LS"
-        for arg in args:
-            if not arg.startswith("-") and arg != "--quick":
-                ticker = arg; break
+        # Modo rápido (CLI): requer ticker como argumento
+        if not ticker:
+            console.print("[red]❌ Modo rápido requer um ticker. Ex: tradingagents --quick BCP.LS[/red]")
+            return
         selections = _build_quick_selections_for(ticker)
     else:
         selections = get_user_selections()
@@ -1165,7 +1162,10 @@ def run_analysis(checkpoint: bool | None = None, quick: bool = False):
     stats_handler = StatsCallbackHandler()
 
     # Normalize analyst selection to predefined order (selection is a 'set', order is fixed)
-    selected_set = {analyst.value for analyst in selections["analysts"]}
+    if selections["analysts"] and isinstance(next(iter(selections["analysts"])), str):
+        selected_set = set(selections["analysts"])
+    else:
+        selected_set = {analyst.value for analyst in selections["analysts"]}
     selected_analyst_keys = [a for a in ANALYST_ORDER if a in selected_set]
     analyst_execution_plan = build_analyst_execution_plan(selected_analyst_keys)
     analyst_wall_time_tracker = AnalystWallTimeTracker(analyst_execution_plan)
@@ -1247,7 +1247,7 @@ def run_analysis(checkpoint: bool | None = None, quick: bool = False):
         )
         message_buffer.add_message(
             "System",
-            f"Selected analysts: {', '.join(analyst.value for analyst in selections['analysts'])}",
+            f"Selected analysts: {', '.join(selected_analyst_keys)}",
         )
         update_display(layout, stats_handler=stats_handler, start_time=start_time)
 
@@ -1356,6 +1356,10 @@ def run_analysis(checkpoint: bool | None = None, quick: bool = False):
 
 @app.command()
 def analyze(
+    ticker: str = typer.Argument(
+        None,
+        help="Ticker a analisar (ex: BCP.LS, BTC-USD). Obrigatório para modo --quick.",
+    ),
     checkpoint: bool | None = typer.Option(
         None,
         "--checkpoint/--no-checkpoint",
@@ -1377,7 +1381,7 @@ def analyze(
         from tradingagents.graph.checkpointer import clear_all_checkpoints
         n = clear_all_checkpoints(DEFAULT_CONFIG["data_cache_dir"])
         console.print(f"[yellow]{n} checkpoint(s) apagados.[/yellow]")
-    run_analysis(checkpoint=checkpoint, quick=quick)
+    run_analysis(checkpoint=checkpoint, quick=quick, ticker=ticker)
 
 
 if __name__ == "__main__":
