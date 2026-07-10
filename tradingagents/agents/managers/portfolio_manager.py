@@ -61,6 +61,23 @@ def create_portfolio_manager(llm):
 
 ---
 
+**Formato de Resposta Obrigatório:**
+
+## Decisão Final
+**Rating**: <Comprar|Sobreponderar|Manter|Subponderar|Vender>
+**Ação**: <Buy|Overweight|Hold|Underweight|Sell>
+**Preço de Entrada**: <float>
+**Stop Loss**: <float>
+**Dimensionamento de Posição**: <percentagem ou descrição>
+
+## Raciocínio
+<parágrafo conciso>
+
+## AVA — Análise, Validação, Ação
+- **Análise**: <síntese dos factos-chave do debate>
+- **Validação**: <confirmação cruzada entre analistas e dados>
+- **Ação**: <decisão final justificada>
+
 Sê decisivo e fundamenta cada conclusão em evidências específicas dos analistas.{get_language_instruction()}"""
 
         final_trade_decision = invoke_structured_or_freetext(
