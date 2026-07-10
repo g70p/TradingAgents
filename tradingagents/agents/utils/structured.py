@@ -55,19 +55,19 @@ def invoke_structured_or_freetext(
 ) -> str:
     """Run the structured call and render to markdown; fall back to free-text on any failure.
 
-    ``prompt`` is whatever the underlying LLM accepts (a string for chat
-    invocations, a list of message dicts for chat models that take that
-    shape). The same value is forwarded to the free-text path so the
-    fallback sees the same input the structured call did.
+    When the structured call produces text that the Pydantic parser cannot
+    handle (common with non-reasoning models like v4-flash), a plain LLM
+    call is made with the same prompt. The prompt MUST include a
+    ``**Rating**: X`` line for downstream parse_rating to work reliably.
     """
     if structured_llm is not None:
         try:
             result = structured_llm.invoke(prompt)
             if result is None:
-                # A thinking model can answer in plain text instead of calling
-                # the tool, leaving the parser with nothing to return. Treat it
-                # as a structured miss and fall back, with a clear reason.
-                raise ValueError("structured output returned no parsed result")
+                raise ValueError(
+                    "structured output returned no parsed result — model sent "
+                    "free text instead of JSON; falling back to plain invoke"
+                )
             return render(result)
         except Exception as exc:
             logger.warning(
@@ -76,4 +76,9 @@ def invoke_structured_or_freetext(
             )
 
     response = plain_llm.invoke(prompt)
-    return response.content
+    fallback_text = str(response.content) if hasattr(response, 'content') else str(response)
+    logger.info(
+        "%s: free-text fallback output (first 200 chars): %s",
+        agent_name, fallback_text[:200],
+    )
+    return fallback_text

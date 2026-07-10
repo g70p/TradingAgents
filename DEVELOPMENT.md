@@ -69,16 +69,18 @@ Fiscal de Horários (cron)
 
 ---
 
-## 4. Structured Output Failures
+## 4. Structured Output — FIX APLICADO
 
 **EGL.LS (2026-07-10)**: `Portfolio Manager: structured-output invocation failed (structured output returned no parsed result); retrying once as free text`
 
-**Causa provável**: v4-flash não suporta tão bem Pydantic/JSON schema como v4-pro. O fallback para free text funciona, mas a decisão pode ser menos precisa.
+**Causa**: v4-flash produziu output em texto livre em vez de JSON parseável. O fallback fazia segunda chamada à API, que podia produzir output diferente. `parse_rating` não encontrava `Rating: X` e devolvia `Hold` (default).
 
-**A investigar**:
-- Adicionar retry com temperatura ligeiramente diferente
-- Validar o output do free text contra o schema esperado
-- Logging de quando o fallback é activado vs sucesso
+**Fix (2026-07-10)**: Prompt do Portfolio Manager agora exige formato obrigatório com:
+- `**Rating**: <Comprar|Sobreponderar|Manter|Subponderar|Vender>` — parse_rating encontra sempre
+- `**Ação**: <Buy|Overweight|Hold|Underweight|Sell>` — redundância em EN
+- AVA: Análise, Validação, Ação — estrutura padronizada para LLMs
+
+Mesmo que o structured output Pydantic falhe, o free-text vai conter `Rating: X` e o parse_rating extrai corretamente.
 
 ---
 
