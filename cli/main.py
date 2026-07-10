@@ -1297,6 +1297,7 @@ def run_analysis(checkpoint: bool | None = None, quick: bool = False, ticker: st
 
         # Stream the analysis
         trace = []
+        analysis_error = None
         try:
             # Use propagate() — the stable, tested path
             final_state, decision = graph.propagate(
