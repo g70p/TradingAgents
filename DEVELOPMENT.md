@@ -75,12 +75,9 @@ Fiscal de Horários (cron)
 
 **Causa**: v4-flash produziu output em texto livre em vez de JSON parseável. O fallback fazia segunda chamada à API, que podia produzir output diferente. `parse_rating` não encontrava `Rating: X` e devolvia `Hold` (default).
 
-**Fix (2026-07-10)**: Prompt do Portfolio Manager agora exige formato obrigatório com:
-- `**Rating**: <Comprar|Sobreponderar|Manter|Subponderar|Vender>` — parse_rating encontra sempre
-- `**Ação**: <Buy|Overweight|Hold|Underweight|Sell>` — redundância em EN
-- AVA: Análise, Validação, Ação — estrutura padronizada para LLMs
+**Fix (2026-07-10)**: Prompt do Portfolio Manager agora exige `**Rating**: X` no output. Isto faz o `parse_rating` encontrar a decisão mesmo quando o structured output Pydantic falha (comum com v4-flash). A alteração ao `structured.py` foi cosmética.
 
-Mesmo que o structured output Pydantic falhe, o free-text vai conter `Rating: X` e o parse_rating extrai corretamente.
+**Resultado**: PHR.LS confirmado — structured output falhou, fallback funcionou, parse_rating extraiu `Buy` ✅. EGL.LS e TDSA.LS tinham falhado antes do fix (devolviam `Hold` quando PM dizia `BUY`).
 
 ---
 
