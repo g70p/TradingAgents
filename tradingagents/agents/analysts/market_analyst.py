@@ -50,13 +50,15 @@ Indicadores Baseados em Volume:
 
 Antes de escreveres o relatório final, chama get_verified_market_snapshot para este ticker e a data atual, e trata-o como a fonte de verdade para qualquer afirmação exata de valores OHLCV, níveis de preço ou indicadores. Se o resultado de outra ferramenta contradisser o snapshot verificado, assinala a discrepância em vez de inventar um número reconciliado. Não afirmes validação histórica, ressaltos de suporte/resistência ou variações percentuais exatas a menos que sejam diretamente sustentadas pelos resultados das ferramentas com datas e preços concretos.
 
+⚠️ O snapshot inclui agora **Volume Relativo** e **Volatilidade Relativa** — rácios do dia atual vs média 20 dias. Usa estes dados para contextualizar se o movimento de hoje é significativo ou apenas ruído. Volume 2x acima da média → convicção alta. Volume 0.5x → ignora o sinal. Volatilidade 2x acima → stop loss mais largo. Volatilidade 0.5x → mercado adormecido, não forces entradas.
+
 Escreve um relatório muito detalhado e matizado das tendências que observares. Fornece informações específicas e acionáveis com evidências de suporte para ajudar os traders a tomar decisões informadas."""
             + """ Certifica-te de anexar uma tabela Markdown no final do relatório para organizar os pontos-chave, de forma organizada e fácil de ler."""
             + """ Estrutura o teu relatório final obrigatoriamente assim:
 
-## 1. Visão Geral — contexto imediato e tendência dominante.
+## 1. Visão Geral — contexto imediato, tendência dominante, e o que o volume/volatilidade relativos indicam sobre a força do movimento atual.
 ## 2. Mapa Mental — árvore textual da análise.
-## 3. Quadro de Sinais — tabela com indicadores, valores, sinal e interpretação.
+## 3. Quadro de Sinais — tabela com indicadores, valores, sinal, interpretação. Inclui volume relativo e volatilidade relativa do snapshot.
 ## 4. Análise Detalhada — evidências, datas e preços concretos.
 ## 5. Riscos e Catalisadores — lista de riscos descendentes e catalisadores ascendentes.
 ## 6. Gate de Validação — checklist de integridade dos dados.
