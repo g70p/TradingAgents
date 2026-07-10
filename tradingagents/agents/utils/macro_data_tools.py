@@ -9,28 +9,27 @@ from tradingagents.dataflows.interface import route_to_vendor
 def get_macro_indicators(
     indicator: Annotated[
         str,
-        "Macro indicator: a friendly alias such as 'cpi', 'core_pce', "
-        "'unemployment', 'fed_funds_rate', '10y_treasury', 'yield_curve', "
-        "'real_gdp', 'vix', or a raw FRED series ID such as 'CPIAUCSL'.",
+        "Indicador macroeconómico. Com a fonte BCE (padrão), este parâmetro é "
+        "ignorado — a ferramenta devolve sempre o resumo completo: taxa de juro "
+        "diretora BCE, inflação HICP Zona Euro, e câmbio EUR/USD.",
     ],
-    curr_date: Annotated[str, "Current date in yyyy-mm-dd format; the end of the window"],
+    curr_date: Annotated[str, "Data atual em formato yyyy-mm-dd; fim da janela de análise"],
     look_back_days: Annotated[
-        int | None, "Trailing window length in days; omit for a 1-year window"
+        int | None, "Janela temporal em dias; omitir para janela de 1 ano"
     ] = None,
 ) -> str:
     """
-    Retrieve a macroeconomic indicator time series from FRED (Federal Reserve
-    Economic Data): policy rates, Treasury yields, inflation, labor, and growth.
-    Returns the series title, units, frequency, the latest value, the change
-    over the window, and a recent observation table. Uses the configured
-    macro_data vendor.
+    Obtém indicadores macroeconómicos da Zona Euro via BCE (Banco Central Europeu):
+    taxa de juro diretora (deposit facility), inflação HICP, e câmbio EUR/USD.
+    Devolve os valores mais recentes com interpretação para trading.
+    Fonte: BCE SDMX API — gratuita, sem autenticação.
 
     Args:
-        indicator (str): Friendly alias or raw FRED series ID
-        curr_date (str): Current date in yyyy-mm-dd format
-        look_back_days (int): Trailing window length; omit for a 1-year window
+        indicator (str): Ignorado com a fonte ECB (devolve sempre o resumo completo)
+        curr_date (str): Data atual em yyyy-mm-dd
+        look_back_days (int): Janela temporal; omitir para 1 ano
 
     Returns:
-        str: A formatted markdown report of the macro series
+        str: Relatório formatado em markdown com os indicadores BCE
     """
     return route_to_vendor("get_macro_indicators", indicator, curr_date, look_back_days)
