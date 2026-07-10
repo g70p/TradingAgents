@@ -43,6 +43,8 @@ def write_report_tree(final_state: dict, ticker: str, save_path) -> Path:
     portfolio_decision = risk.get("judge_decision", "")
     final_trade = final_state.get("final_trade_decision", portfolio_decision)
 
+    prof_msg = final_state.get("professor_message", "")
+
     # Write individual files
     if market:
         (save_path / "mercado.md").write_text(market, encoding="utf-8")
@@ -68,6 +70,8 @@ def write_report_tree(final_state: dict, ticker: str, save_path) -> Path:
         (save_path / "risco_neutro.md").write_text(neutral, encoding="utf-8")
     if portfolio_decision:
         (save_path / "decisao_portfolio.md").write_text(portfolio_decision, encoding="utf-8")
+    if prof_msg:
+        (save_path / "professor.md").write_text(prof_msg, encoding="utf-8")
 
     # ── Consolidated report with standardised template ──────────────────
 
@@ -149,6 +153,13 @@ def write_report_tree(final_state: dict, ticker: str, save_path) -> Path:
         parts.append("## 9. Sinal Final de Trading")
         parts.append("")
         parts.append(f"**{final_trade}**")
+        parts.append("")
+
+    # 7. Professor (mensagem simplificada)
+    if prof_msg:
+        parts.append("## 10. Mensagem para Telegram (Professor)")
+        parts.append("")
+        parts.append(prof_msg.strip())
         parts.append("")
 
     # Footer
