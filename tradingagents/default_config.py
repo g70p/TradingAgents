@@ -107,8 +107,8 @@ DEFAULT_CONFIG = _apply_env_overrides({
     # All agent prompts have been translated to Portuguese by default.
     "output_language": "Português",
     # Debate and discussion settings
-    "max_debate_rounds": 3,
-    "max_risk_discuss_rounds": 3,
+    "max_debate_rounds": 2,
+    "max_risk_discuss_rounds": 2,
     "max_recur_limit": 100,
     # Holding period (days) for outcome tracking, configurable per asset type.
     # 'default' is used when the asset type doesn't have a specific entry.
