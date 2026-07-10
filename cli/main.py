@@ -1332,27 +1332,41 @@ def run_analysis(checkpoint: bool | None = None, quick: bool = False, ticker: st
         console.print(f"\n[bold]📱 Mensagem para Telegram:[/bold]\n")
         console.print(prof_msg)
 
-    # Prompt to save report
-    save_choice = typer.prompt("Guardar relatório?", default="S").strip().upper()
-    if save_choice in ("S", "Y", "YES", "SIM", ""):
+    if quick:
+        # Modo rápido: auto-save sem prompt
         timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-        default_path = Path.cwd() / "reports" / f"{selections['ticker']}_{timestamp}"
-        save_path_str = typer.prompt(
-            "Caminho para guardar (Enter para usar o padrão)",
-            default=str(default_path)
-        ).strip()
-        save_path = Path(save_path_str)
+        save_path = Path(DEFAULT_CONFIG["results_dir"]) / "reports" / f"{selections['ticker']}_{timestamp}"
         try:
             report_file = save_report_to_disk(final_state, selections["ticker"], save_path)
             console.print(f"\n[green]✓ Relatório guardado em:[/green] {save_path.resolve()}")
-            console.print(f"  [dim]Relatório completo:[/dim] {report_file.name}")
         except Exception as e:
-            console.print(f"[red]Erro ao guardar relatório: {e}[/red]")
+            console.print(f"[red]Erro ao guardar: {e}[/red]")
+    else:
+        # Prompt to save report
+        save_choice = typer.prompt("Guardar relatório?", default="S").strip().upper()
+        if save_choice in ("S", "Y", "YES", "SIM", ""):
+            timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+            default_path = Path.cwd() / "reports" / f"{selections['ticker']}_{timestamp}"
+            save_path_str = typer.prompt(
+                "Caminho para guardar (Enter para usar o padrão)",
+                default=str(default_path)
+            ).strip()
+            save_path = Path(save_path_str)
+            try:
+                report_file = save_report_to_disk(final_state, selections["ticker"], save_path)
+                console.print(f"\n[green]✓ Relatório guardado em:[/green] {save_path.resolve()}")
+                console.print(f"  [dim]Relatório completo:[/dim] {report_file.name}")
+            except Exception as e:
+                console.print(f"[red]Erro ao guardar relatório: {e}[/red]")
 
-    # Prompt to display full report
-    display_choice = typer.prompt("\nMostrar relatório completo?", default="S").strip().upper()
-    if display_choice in ("S", "Y", "YES", "SIM", ""):
+    if quick:
+        # Quick mode: always show full report
         display_complete_report(final_state)
+    else:
+        # Prompt to display full report
+        display_choice = typer.prompt("\nMostrar relatório completo?", default="S").strip().upper()
+        if display_choice in ("S", "Y", "YES", "SIM", ""):
+            display_complete_report(final_state)
 
 
 @app.command()
