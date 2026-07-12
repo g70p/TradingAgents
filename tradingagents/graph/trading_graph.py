@@ -3,12 +3,26 @@
 import json
 import logging
 import os
+from contextlib import contextmanager
 from datetime import datetime, timedelta
+from io import StringIO
 from pathlib import Path
 from typing import Any
+import sys
 
 import yfinance as yf
 from langgraph.prebuilt import ToolNode
+
+
+@contextmanager
+def _suppress_yfinance_output():
+    """Silence yfinance print() spam (e.g. '$SPY: possibly delisted')."""
+    old_stdout, old_stderr = sys.stdout, sys.stderr
+    sys.stdout = sys.stderr = StringIO()
+    try:
+        yield
+    finally:
+        sys.stdout, sys.stderr = old_stdout, old_stderr
 
 # Import the abstract tool methods from agent_utils
 from tradingagents.agents.utils.agent_utils import (
@@ -279,8 +293,9 @@ class TradingAgentsGraph:
             # Normalize so the realized-return lookup hits the same instrument
             # the analysis priced (e.g. XAUUSD -> GC=F) (#984). The benchmark is
             # already a canonical Yahoo symbol from ``_resolve_benchmark``.
-            stock = yf.Ticker(normalize_symbol(ticker)).history(start=trade_date, end=end_str)
-            bench = yf.Ticker(benchmark).history(start=trade_date, end=end_str)
+            with _suppress_yfinance_output():
+                stock = yf.Ticker(normalize_symbol(ticker)).history(start=trade_date, end=end_str)
+                bench = yf.Ticker(benchmark).history(start=trade_date, end=end_str)
 
             if len(stock) < 2 or len(bench) < 2:
                 return None, None, None
