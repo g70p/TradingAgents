@@ -204,6 +204,13 @@ class TradingAgentsGraph:
 
     def _create_tool_nodes(self) -> dict[str, ToolNode]:
         """Create tool nodes for different data sources using abstract methods."""
+        from tradingagents.agents.utils.math_tools_lc import (
+            get_expected_price_range,
+            get_implied_volatility,
+            get_kelly_sizing,
+            get_regime_detection,
+            get_tail_risk,
+        )
         return {
             "market": ToolNode(
                 [
@@ -240,6 +247,15 @@ class TradingAgentsGraph:
                     get_balance_sheet,
                     get_cashflow,
                     get_income_statement,
+                ]
+            ),
+            "math": ToolNode(
+                [
+                    get_expected_price_range,
+                    get_tail_risk,
+                    get_regime_detection,
+                    get_kelly_sizing,
+                    get_implied_volatility,
                 ]
             ),
         }

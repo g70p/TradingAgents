@@ -12,6 +12,7 @@ from tradingagents.agents import (
     create_conservative_debator,
     create_fundamentals_analyst,
     create_market_analyst,
+    create_math_analyst,
     create_msg_delete,
     create_neutral_debator,
     create_news_analyst,
@@ -89,6 +90,7 @@ class GraphSetup:
             "social": lambda: create_sentiment_analyst(self.deep_thinking_llm),
             "news": lambda: create_news_analyst(self.deep_thinking_llm),
             "fundamentals": lambda: create_fundamentals_analyst(self.deep_thinking_llm),
+            "math": lambda: create_math_analyst(self.deep_thinking_llm),
         }
 
         # Researchers, trader, risk, managers — all use deep thinking
