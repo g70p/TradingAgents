@@ -1,10 +1,32 @@
 # Changelog
 
 All notable changes to TradingAgents are documented here.
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
-and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
-Breaking changes within the 0.x line are called out explicitly.
+## [G70P] — 2026-07-16
+
+### Added (Fork G70P)
+
+- **Math Analyst** — quinto analista com ferramentas determinísticas:
+  HMM regime detection (Baum), Bachelier price cone, Mandelbrot tail exponent,
+  Kelly Criterion (Thorp), Black-Scholes-Merton implied volatility.
+  Zero risco de alucinação — LLM orquestra, Python calcula.
+- **RSS Português** — feeds gratuitos integrados no `get_global_news()`:
+  ECO (economia), Jornal de Negócios (mercados), RTP (nacional).
+- **collect_data()** — novo método em `TradingAgentsGraph` que corre
+  todos os tools de dados sem LLM. Zero tokens. Para boletins e pré-visualização.
+- **Volume Framework** — framework de leitura tática G70P injetado nos
+  prompts de Market, Bull, Bear, Research Manager, Professor, Math.
+  Conceitos: campo de batalha, engodo, 0-0 contextual, P&L = vencedor.
+
+### Changed (Fork G70P)
+
+- Debate rounds: 3 → 2
+- Risk rounds: 3 → 2
+- Quick Think = Deep Think = v4-flash (DeepSeek)
+- Agentes disponíveis: market, social, news, fundamentals, **math**
+
+---
 
 ## [0.3.1] — 2026-07-05
 

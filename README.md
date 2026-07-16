@@ -32,106 +32,71 @@ fontes de dados e arquitectura de agentes diferentes.
 |---|---|---|
 | **Idioma** | Inglês | **Português Europeu** |
 | **Modelo de Pensamento** | Quick + Deep Thinking | **Deep Thinking em TODOS os agentes** |
-| **Rondas de Debate** | 1 | **3 rondas (Bull ↔ Bear)** |
-| **Fontes de Dados** | Yahoo Finance, StockTwits, Reddit, FRED | **Yahoo Finance, Google News, Euronext, Jornal de Negócios, Investing.com, CNBC, MarketWatch, ECB, Polymarket** |
+| **Rondas de Debate** | 1 | **2 rondas (Bull ↔ Bear) + 2 rondas de risco** |
+| **Analistas** | 4 (Market, Social, News, Fundamentals) | **5 (Market, Social, News, Fundamentals, Math)** |
+| **Fontes de Dados** | Yahoo Finance, StockTwits, Reddit, FRED | **Yahoo Finance, ECB, Polymarket + RSS PT (ECO, J. Negócios, RTP)** |
+| **Ferramentas Quant** | Não | **HMM (Baum), Bachelier, Mandelbrot, Kelly (Thorp), Black-Scholes-Merton** |
+| **Volume Framework** | Não | **Leitura tática G70P — campo de batalha, engodo, P&L** |
+| **Modo Dados Crus** | Não | **collect_data() — zero tokens, zero LLM** |
 | **Dimensionamento** | Manual | **ATR + Kelly Criterion** |
-| **Cripto** | Básico | **Multi-exchange (Binance→Bybit→OKX) + CoinGecko + mempool.space** |
 | **Sessões de Mercado** | Não | **Fiscal de Horários (Euronext, NYSE, Crypto 24/7)** |
 | **Modelo de Relatórios** | Livre | **AVA (Análise → Validação → Ação) em todos os agentes** |
 | **Output Telegram** | Não | **Professor 👨‍🏫 — explicação simples, formato AVA, zero jargão** |
 
 ---
 
-## ⚠️ Avisos Legais e Isenção de Responsabilidade
+## 🧠 Arquitectura
 
-**LEIA ATENTAMENTE ANTES DE USAR ESTE SOFTWARE.**
+```
+┌──────────────────────────────────────────────────────────────────────────┐
+│                      TRADINGAGENTS PT-PT — g70p                           │
+│                                                                           │
+│   ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌──────────┐ ┌─────────┐          │
+│   │ Market  │→│ Social  │→│  News   │→│Fundament. │→│  MATH   │          │
+│   │(Técnico)│ │(Sentim.)│ │ (Macro) │ │(Balanços)│ │(HMM-Kelly)│          │
+│   └─────────┘ └─────────┘ └─────────┘ └──────────┘ └────┬────┘          │
+│                                                          ▼                │
+│                                ┌─────────────────────┐                   │
+│                                │ Debate Bull vs Bear  │ ← 2 rondas        │
+│                                │ 🐂 ↔ 🐻             │                   │
+│                                └──────────┬──────────┘                   │
+│                                           ▼                               │
+│                                    ┌────────────┐                        │
+│                                    │   Trader    │ ← ATR + Kelly          │
+│                                    └─────┬──────┘                        │
+│                                          ▼                                │
+│                               ┌───────────────────┐                      │
+│                               │  Gestão de Risco   │ ← 3 perfis          │
+│                               │ Agro · Neutro · Cons│   2 rondas          │
+│                               └─────────┬─────────┘                      │
+│                                         ▼                                 │
+│                              ┌─────────────────────┐                     │
+│                              │  Gestor Portfólio    │ ← Decisão final     │
+│                              └──────────┬──────────┘                     │
+│                                         ▼                                 │
+│                              ┌─────────────────────┐                     │
+│                              │     Professor 👨‍🏫    │ ← Explicação        │
+│                              │  (para Telegram)    │    simples PT        │
+│                              └─────────────────────┘                     │
+└──────────────────────────────────────────────────────────────────────────┘
+```
 
-### 1. Não é Aconselhamento Financeiro
+### Math Analyst (novo)
 
-Este software é disponibilizado **exclusivamente para fins educativos, de investigação e estudo**. 
-Nada neste software constitui aconselhamento financeiro, recomendação de investimento, 
-solicitação ou oferta de compra ou venda de quaisquer instrumentos financeiros.
+Ferramentas determinísticas — zero risco de alucinação nos números:
 
-As análises, relatórios e decisões geradas pelos agentes LLM são **simulações automáticas** 
-produzidas por modelos de inteligência artificial. Não refletem a opinião de analistas 
-financeiros certificados, consultores de investimento ou quaisquer profissionais 
-credenciados junto da CMVM, SEC, FCA ou qualquer outro regulador.
+| Ferramenta | Autor | Função |
+|---|---|---|
+| `get_regime_detection` | Baum (1960s) | Hidden Markov Model — regime bull/bear/sideways |
+| `get_expected_price_range` | Bachelier (1900) | Cone de preço browniano — intervalo esperado |
+| `get_tail_risk` | Mandelbrot (1963) | Expoente α da cauda — risco de outlier estrutural |
+| `get_kelly_sizing` | Thorp (1960s) | Kelly Criterion — fração ótima de capital |
+| `get_implied_volatility` | Black-Scholes-Merton (1973) | Vol implícita + Gregos |
 
-**Nunca tomes decisões financeiras baseadas exclusivamente em outputs de IA.**
+### Volume Framework
 
-### 2. Risco de Perda Financeira Significativa
-
-Investir e negociar nos mercados financeiros envolve **risco substancial de perda**.
-Podes perder **todo o capital investido** e potencialmente mais do que investiste
-(no caso de produtos alavancados, futuros, opções ou CFDs).
-
-- ❌ **Não invistas dinheiro que não possas perder.**
-- ❌ **Não uses dinheiro destinado a necessidades básicas, saúde, educação ou reforma.**
-- ❌ **Não invistas com base em empréstimos ou crédito.**
-- ❌ **O desempenho passado não garante resultados futuros.**
-
-### 3. Resultados Não Garantidos
-
-Os resultados produzidos por este framework podem variar significativamente em função de:
-
-- O modelo LLM utilizado (DeepSeek, OpenAI, Anthropic, etc.)
-- A configuração do sistema (temperatura, número de rondas, agentes selecionados)
-- O período temporal analisado
-- A qualidade e disponibilidade das fontes de dados externas
-- A máquina onde o software é executado (diferentes ambientes podem produzir resultados diferentes)
-- Alterações nas APIs de terceiros (Yahoo Finance, Google News, ECB, etc.)
-
-**Nenhum teste, backtest ou simulação pode garantir rentabilidade futura.** 
-Os mercados são influenciados por fatores imprevisíveis que nenhum modelo de IA 
-pode antecipar completamente.
-
-### 4. Dados de Terceiros
-
-Este software depende de APIs e fontes de dados externas que podem:
-
-- Estar indisponíveis ou sofrer interrupções
-- Conter erros, omissões ou atrasos
-- Alterar formatos ou termos de serviço sem aviso prévio
-- Fornecer dados desatualizados ou incompletos
-
-Os autores não garantem a exatidão, integridade ou atualidade de quaisquer dados 
-obtidos através deste software.
-
-### 5. Responsabilidade do Utilizador
-
-Ao utilizar este software, **assumes integralmente todos os riscos** associados às 
-tuas decisões de investimento. Os autores, contribuidores e afiliados **não se 
-responsabilizam por**:
-
-- Perdas financeiras diretas ou indiretas
-- Danos consequentes ou incidentais
-- Lucros cessantes
-- Decisões de trading baseadas nos outputs do software
-- Erros, bugs ou comportamentos inesperados do software
-- Alterações nos mercados que invalidem análises anteriores
-
-### 6. Conformidade Regulatória
-
-Este software não está registado, licenciado ou aprovado por qualquer autoridade 
-reguladora financeira, incluindo mas não limitado a:
-
-- CMVM (Comissão do Mercado de Valores Mobiliários) — Portugal
-- SEC (Securities and Exchange Commission) — EUA
-- FCA (Financial Conduct Authority) — Reino Unido
-- ESMA (European Securities and Markets Authority) — UE
-
-### 7. Sem Garantia
-
-Este software é fornecido **"AS IS"** (tal como está), sem garantias de qualquer tipo, 
-expressas ou implícitas, incluindo mas não limitado a garantias de comercialização, 
-adequação a um fim específico ou não violação.
-
----
-
-**AO USAR ESTE SOFTWARE, RECONHECES QUE LESTE, COMPREENDESTE E ACEITAS ESTES TERMOS 
-NA SUA TOTALIDADE. SE NÃO CONCORDAS, NÃO UTILIZES O SOFTWARE.**
-
----
+Injetado nos prompts de 6 agentes (Market, Bull, Bear, Research Manager, Professor, Math).
+Princípios de leitura tática do G70P — volume como campo de batalha, sem pausas, engodo como arma do vencedor.
 
 ---
 
@@ -146,8 +111,9 @@ cd TradingAgents
 python3 -m venv .venv
 source .venv/bin/activate
 
-# 3. Instalar
+# 3. Instalar (com dependências do Math Agent)
 pip install -e .
+pip install hmmlearn scipy
 
 # 4. Configurar chaves API
 cp .env.example .env
@@ -173,116 +139,57 @@ source .venv/bin/activate
 tradingagents
 ```
 
-```
-┌─────────────────────────────────────────┐
-│        Bem-vindo ao TradingAgents        │
-│         Menu Principal                   │
-├─────────────────────────────────────────┤
-│  1. Analisar Ticker     (passo a passo)  │
-│  2. Análise Rápida      (.env)           │
-│  3. Histórico           (análises)        │
-│  4. Configuração        (.env actual)     │
-│  5. Sair                                 │
-└─────────────────────────────────────────┘
-```
-
 ### Linha de Comandos
 ```bash
 # Análise rápida (usa .env)
 tradingagents analyze --quick BCP.LS
 
-# Análise programática
+# Análise programática com Math Agent
 python3 -c "
 from tradingagents.graph.trading_graph import TradingAgentsGraph
 from tradingagents.default_config import DEFAULT_CONFIG
 
-g = TradingAgentsGraph(['market','social','news','fundamentals'],
+g = TradingAgentsGraph(['market','social','news','fundamentals','math'],
                         config=DEFAULT_CONFIG.copy(), debug=True)
-state, decision = g.propagate('BCP.LS', '2026-07-09', asset_type='stock')
+state, decision = g.propagate('BCP.LS', '2026-07-16', asset_type='stock')
 print(decision)
 "
 ```
 
+### Modo Dados Crus (zero tokens)
+```python
+# Recolhe dados sem correr o LLM — para boletins, pré-visualização, debugging
+data = g.collect_data('BTC-USD', '2026-07-16', asset_type='crypto')
+print(data['ticker_news'])      # Notícias do ticker
+print(data['global_news'])      # Notícias globais + RSS português
+print(data['market_snapshot'])  # OHLCV
+```
+
 ---
 
-## 📊 Tickers Suportados
+## 📊 Tickers e Fontes
 
-### Ações Portuguesas (Euronext Lisbon)
-| Ticker | Empresa |
-|---|---|
-| `BCP.LS` | Banco Comercial Português |
-| `EGL.LS` | Mota-Engil |
-| `TDSA.LS` | Teixeira Duarte |
-| `PHR.LS` | Pharol |
-| `EDP.LS` | EDP Energias de Portugal |
+### Ações PSI-20 (Euronext Lisbon)
+BCP.LS, EGL.LS, TDSA.LS, PHR.LS, EDP.LS, EDPR.LS, GALP.LS, JMT.LS, NOS.LS, RENE.LS, SEM.LS, SON.LS, CTT.LS, ALTR.LS, COR.LS, IBS.LS, SNG.LS, RAM.LS, VAF.LS, NVG.LS, NBA.LS
 
 ### Criptomoedas
-| Ticker | Ativo |
-|---|---|
-| `BTC-USD` | Bitcoin (com dados on-chain) |
-| `BNB-USD` | Binance Coin |
+BTC-USD (com dados on-chain: funding rate, open interest)
 
-### Ações Estrangeiras
-| Ticker | Empresa |
-|---|---|
-| `NVDA` | NVIDIA |
-| `AAPL` | Apple |
-| `GC=F` | Ouro (Commodity) |
+### Fontes de Notícias
+- Yahoo Finance (global)
+- RSS Português: **ECO** (economia), **Jornal de Negócios** (mercados), **RTP** (nacional)
 
 ---
 
-## 🧠 Arquitectura
+## ⚠️ Avisos Legais
 
-```
-┌──────────────────────────────────────────────────────────────────┐
-│                      TRADINGAGENTS PT-PT                          │
-│                                                                   │
-│   ┌─────────────┐   ┌─────────────┐   ┌─────────────┐   ┌──────┐ │
-│   │  Analista    │   │  Analista    │   │  Analista    │   │ Anal │ │
-│   │  Mercado     │   │  Sentimento  │   │  Notícias    │   │ Fund │ │
-│   │  (Técnico)   │   │  (Social)    │   │  (Macro)     │   │ (Val)│ │
-│   └──────┬───────┘   └──────┬───────┘   └──────┬───────┘   └──┬───┘ │
-│          └──────────────────┼──────────────────┼──────────────┘      │
-│                             ▼                                       │
-│                   ┌─────────────────┐                               │
-│                   │  Consolidor AVA  │  ← Relatório unificado        │
-│                   └────────┬────────┘                               │
-│                            ▼                                        │
-│              ┌─────────────────────────┐                            │
-│              │   Debate Bull vs Bear    │  ← 3 rondas                │
-│              │   🐂 ↔ 🐻               │                            │
-│              └────────────┬────────────┘                            │
-│                           ▼                                         │
-│                   ┌──────────────┐                                  │
-│                   │    Trader     │  ← ATR + decisão final           │
-│                   └──────┬───────┘                                  │
-│                          ▼                                          │
-│              ┌───────────────────────┐                              │
-│              │   Gestão de Risco      │  ← 3 perfis de risco        │
-│              │   Agro • Neutro • Cons │                              │
-│              └───────────┬───────────┘                              │
-│                          ▼                                          │
-│               ┌─────────────────────┐                               │
-│               │  Gestor Portfólio    │  ← Decisão final consolidada  │
-│               └──────────┬──────────┘                               │
-│                          ▼                                          │
-│               ┌─────────────────────┐                               │
-│               │     Professor 👨‍🏫   │  ← Explicação simples         │
-│               │  (para Telegram)    │     para investidores          │
-│               └─────────────────────┘                               │
-└──────────────────────────────────────────────────────────────────┘
-```
+**LEIA ATENTAMENTE ANTES DE USAR ESTE SOFTWARE.**
 
----
+Este software é disponibilizado **exclusivamente para fins educativos, de investigação e estudo**.
+Nada neste software constitui aconselhamento financeiro. Os outputs dos agentes LLM são
+simulações automáticas — nunca tomes decisões financeiras baseadas exclusivamente em outputs de IA.
 
-## 🔧 Desenvolvimento
-
-```bash
-# Ambiente
-source .venv/bin/activate
-pip install -e .
-find . -name '__pycache__' -exec rm -rf {} +   # limpar cache se necessário
-```
+**AO USAR ESTE SOFTWARE, RECONHECES QUE LESTE, COMPREENDESTE E ACEITAS ESTES TERMOS.**
 
 ---
 
