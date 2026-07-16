@@ -7,6 +7,7 @@ from tradingagents.agents.utils.agent_utils import (
     get_stock_data,
     get_verified_market_snapshot,
 )
+from tradingagents.agents.utils.volume_framework import VOLUME_FRAMEWORK
 
 
 def create_market_analyst(llm):
@@ -63,6 +64,7 @@ Escreve um relatório muito detalhado e matizado das tendências que observares.
 ## 5. Riscos e Catalisadores — lista de riscos descendentes e catalisadores ascendentes.
 ## 6. Gate de Validação — checklist de integridade dos dados.
 ## 7. Notas de Continuidade — o que Bull/Bear/Trader precisam de saber."""
+            + VOLUME_FRAMEWORK
             + get_language_instruction()
         )
 

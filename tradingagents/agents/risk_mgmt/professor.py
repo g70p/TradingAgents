@@ -1,4 +1,6 @@
 """Agente Professor — Explicação simples para investidores ocasionais.
+from tradingagents.agents.utils.volume_framework import VOLUME_FRAMEWORK
+
 
 Recebe o relatório consolidado final e produz uma mensagem curta (3-4 parágrafos)
 em português simples, sem jargão técnico, para entrega em canais como Telegram.

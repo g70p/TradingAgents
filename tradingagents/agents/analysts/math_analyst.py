@@ -16,14 +16,8 @@ from tradingagents.agents.utils.agent_utils import get_language_instruction
 
 
 def create_math_analyst(llm):
-    """Create the Math Analyst agent.
+    """Create the Math Analyst agent."""
 
-    The agent receives: OHLCV data from the Market Analyst's tools,
-    and its own math tools for statistical analysis. It produces a
-    concise quantitative report.
-    """
-
-    # Math-specific tools
     from tradingagents.agents.utils.math_tools_lc import (
         get_expected_price_range,
         get_implied_volatility,
@@ -70,11 +64,12 @@ def create_math_analyst(llm):
         "- Sê conciso — o teu relatório vai ser lido pelo Research Manager antes do debate\n"
         ""
         "**Volume como campo de batalha (framework G70P):**\n"
-        "- Volume é o campo de batalha — revela estratégia, não suor\n"
-        "- Não há pausas — o que parece lateral é engodo\n"
-        "- Volume baixo = adversário escondido, não descanso\n"
-        "- O vencedor de hoje é o vendedor de amanhã\n"
-        "- Cada barra é 0-0 até o volume decidir o contrário\n"
+        "- Volume é o campo de batalha — revela estratégia e intenção. O preço é só o resultado\n"
+        "- Volume baixo não é pausa — é armadilha. O adversário está escondido\n"
+        "- O vencedor de hoje é o vendedor de amanhã — o jogo nunca acaba, só troca de lado\n"
+        "- Cada barra começa 0-0. O volume decide quem atacou, quem defendeu, quem cedeu\n"
+        "- All-in é tiro no pé — posições pequenas e consistentes batem apostas emocionais\n"
+        "- Confronta sempre o que os números dizem com o que o volume revela\n"
     ) + get_language_instruction()
 
     prompt = ChatPromptTemplate.from_messages(

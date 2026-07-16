@@ -2,6 +2,8 @@ from tradingagents.agents.utils.agent_utils import (
     get_language_instruction,
 )
 from tradingagents.agents.utils.report_consolidator import consolidate_analyst_reports
+from tradingagents.agents.utils.volume_framework import VOLUME_FRAMEWORK
+
 
 
 def create_bear_researcher(llm):
@@ -69,7 +71,7 @@ O que o Touro e o Gestor de Investigação precisam de saber.
 {current_response}
 
 Usa esta informação para apresentar um argumento bear convincente, refutar as afirmações do touro e participar num debate dinâmico.
-""" + get_language_instruction()
+""" + VOLUME_FRAMEWORK + get_language_instruction()
 
         response = llm.invoke(prompt)
 

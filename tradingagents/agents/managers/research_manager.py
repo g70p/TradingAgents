@@ -6,6 +6,8 @@ from tradingagents.agents.utils.agent_utils import (
     get_instrument_context_from_state,
     get_language_instruction,
 )
+from tradingagents.agents.utils.volume_framework import VOLUME_FRAMEWORK
+
 
 
 def create_research_manager(llm):
@@ -44,7 +46,7 @@ Assume uma posição clara sempre que os argumentos mais fortes do debate o just
 ## AVA — Análise, Validação, Ação
 - **Análise**: <pesa os argumentos bull vs bear, identifica o lado com maior peso de evidências>
 - **Validação**: <confirmação cruzada com os dados de mercado; há divergências?>
-- **Ação**: <plano de investimento claro e acionável: rating + justificação>""" + get_language_instruction()
+- **Ação**: <plano de investimento claro e acionável: rating + justificação>""" + VOLUME_FRAMEWORK + get_language_instruction()
 
         response = llm.invoke(prompt)
         investment_plan = str(response.content) if hasattr(response, 'content') else str(response)
