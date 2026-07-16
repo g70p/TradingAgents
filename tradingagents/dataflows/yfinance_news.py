@@ -7,6 +7,7 @@ import yfinance as yf
 from dateutil.relativedelta import relativedelta
 
 from .config import get_config
+from .portuguese_rss import get_portuguese_news
 from .stockstats_utils import yf_retry
 from .symbol_utils import normalize_symbol
 
@@ -211,9 +212,18 @@ def get_global_news_yfinance(
         # All candidates fell outside the window -> say so rather than return an
         # empty-bodied report (#993).
         if kept == 0:
-            return f"No global news found between {start_date} and {curr_date}"
+            result = f"No global news found between {start_date} and {curr_date}"
+            # Still try Portuguese RSS — local context matters even without global news
+        else:
+            result = f"## Global Market News, from {start_date} to {curr_date}:\n\n{news_str}"
 
-        return f"## Global Market News, from {start_date} to {curr_date}:\n\n{news_str}"
+        # ── Append Portuguese RSS headlines ──────────────────────
+        with contextlib.suppress(Exception):
+            pt_news = get_portuguese_news()
+            if pt_news:
+                result += "\n\n" + pt_news
+
+        return result
 
     except Exception as e:
         return f"Error fetching global news: {str(e)}"

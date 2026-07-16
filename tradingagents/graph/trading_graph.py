@@ -44,6 +44,7 @@ from tradingagents.agents.utils.agent_utils import (
 from tradingagents.agents.utils.memory import TradingMemoryLog
 from tradingagents.dataflows.config import set_config
 from tradingagents.dataflows.crypto_onchain import get_crypto_onchain_summary
+from tradingagents.dataflows.interface import route_to_vendor
 from tradingagents.dataflows.market_sessions import get_market_context_for_state
 from tradingagents.dataflows.utils import safe_ticker_component
 from tradingagents.default_config import DEFAULT_CONFIG
@@ -425,6 +426,115 @@ class TradingAgentsGraph:
                 self._checkpointer_ctx.__exit__(None, None, None)
                 self._checkpointer_ctx = None
                 self.graph = self.workflow.compile()
+
+    def collect_data(self, ticker: str, trade_date: str, asset_type: str = "stock") -> dict:
+        """Run only the data-collection tools — zero LLM calls, zero tokens.
+
+        Returns a dict with raw string outputs from every data tool the
+        full pipeline would feed to the analysts.  Callers format the
+        returned dict into a bulletin / feed / pre-prompt dump.
+
+        Args:
+            ticker: Ticker symbol (e.g. ``BTC-USD``, ``BCP.LS``).
+            trade_date: ISO date string (``YYYY-MM-DD``).
+            asset_type: ``"stock"`` or ``"crypto"``.
+
+        Returns:
+            Dict with keys ``ticker_news``, ``global_news``, ``market_snapshot``,
+            ``indicators``, ``insider_tx``, ``macro``, ``prediction_markets``,
+            ``fundamentals``, ``balance_sheet``, ``cashflow``,
+            ``income_statement``, ``instrument_context``, ``market_session``,
+            ``collection_time``.
+        """
+        from datetime import datetime, timedelta
+
+        start_date = (datetime.strptime(trade_date, "%Y-%m-%d") - timedelta(days=7)).strftime("%Y-%m-%d")
+
+        data: dict[str, str] = {}
+        collection_errors: list[str] = []
+
+        # ── Instrument / market context (deterministic, no LLM) ──────
+        try:
+            data["instrument_context"] = self.resolve_instrument_context(ticker, asset_type)
+        except Exception as exc:
+            data["instrument_context"] = f"(indisponível: {exc})"
+
+        try:
+            data["market_session"] = get_market_context_for_state(ticker, asset_type) or ""
+        except Exception as exc:
+            data["market_session"] = f"(indisponível: {exc})"
+
+        # ── Ticker-specific news ────────────────────────────────────
+        try:
+            data["ticker_news"] = route_to_vendor("get_news", ticker, start_date, trade_date)
+        except Exception as exc:
+            collection_errors.append(f"ticker_news: {exc}")
+            data["ticker_news"] = f"(indisponível: {exc})"
+
+        # ── Global / macro news (includes Portuguese RSS) ───────────
+        try:
+            data["global_news"] = route_to_vendor("get_global_news", trade_date)
+        except Exception as exc:
+            collection_errors.append(f"global_news: {exc}")
+            data["global_news"] = f"(indisponível: {exc})"
+
+        # ── Market snapshot (OHLCV) ──────────────────────────────────
+        try:
+            data["market_snapshot"] = route_to_vendor("get_stock_data", ticker, start_date, trade_date)
+        except Exception as exc:
+            collection_errors.append(f"market_snapshot: {exc}")
+            data["market_snapshot"] = f"(indisponível: {exc})"
+
+        # ── Technical indicators ────────────────────────────────────
+        try:
+            data["indicators"] = route_to_vendor("get_indicators", ticker, start_date, trade_date)
+        except Exception as exc:
+            collection_errors.append(f"indicators: {exc}")
+            data["indicators"] = f"(indisponível: {exc})"
+
+        # ── Insider transactions ────────────────────────────────────
+        try:
+            data["insider_tx"] = route_to_vendor("get_insider_transactions", ticker)
+        except Exception as exc:
+            data["insider_tx"] = f"(indisponível: {exc})"
+
+        # ── Macro indicators ────────────────────────────────────────
+        try:
+            data["macro"] = route_to_vendor("get_macro_indicators", "")
+        except Exception as exc:
+            data["macro"] = f"(indisponível: {exc})"
+
+        # ── Prediction markets ──────────────────────────────────────
+        try:
+            data["prediction_markets"] = route_to_vendor("get_prediction_markets", "")
+        except Exception as exc:
+            data["prediction_markets"] = f"(indisponível: {exc})"
+
+        # ── Fundamentals (stocks only) ──────────────────────────────
+        if asset_type == "stock":
+            for tool_name in ("get_fundamentals", "get_balance_sheet", "get_cashflow", "get_income_statement"):
+                key = tool_name.replace("get_", "")
+                try:
+                    data[key] = route_to_vendor(tool_name, ticker)
+                except Exception as exc:
+                    data[key] = f"(indisponível: {exc})"
+        else:
+            for key in ("fundamentals", "balance_sheet", "cashflow", "income_statement"):
+                data[key] = ""
+
+        # ── Crypto on-chain (crypto only) ───────────────────────────
+        if asset_type == "crypto":
+            try:
+                data["crypto_onchain"] = get_crypto_onchain_summary(ticker)
+            except Exception as exc:
+                data["crypto_onchain"] = f"(indisponível: {exc})"
+        else:
+            data["crypto_onchain"] = ""
+
+        data["collection_errors"] = " | ".join(collection_errors) if collection_errors else ""
+        data["collection_time"] = datetime.now().isoformat()
+
+        return data
 
     def save_reports(self, final_state, ticker, save_path=None) -> Path:
         """Write the markdown report tree for a completed run, like the CLI does.

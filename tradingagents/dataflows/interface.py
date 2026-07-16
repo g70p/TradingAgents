@@ -30,6 +30,7 @@ from .y_finance import (
     get_YFin_data_online,
 )
 from .yfinance_news import get_global_news_yfinance, get_news_yfinance
+from .portuguese_rss import get_portuguese_news
 
 logger = logging.getLogger(__name__)
 
