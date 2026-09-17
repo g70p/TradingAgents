@@ -73,8 +73,14 @@ NÃO escrevas texto livre fora desta estrutura. Começa SEMPRE com "## Decisão 
 - **Validação**: <confirmação cruzada entre analistas e dados>
 - **Ação**: <decisão final justificada>
 
-Sê decisivo e fundamenta cada conclusão em evidências específicas dos analistas.{get_language_instruction()}"""
+Fundamenta cada conclusão em evidências específicas dos analistas.{get_language_instruction()}"""
 
+        prompt += "\nRelatório quantitativo:\n" + state.get("math_report", "")
+        prompt += (
+            "\nUsa apenas os dados fornecidos; não chames ferramentas externas. "
+            "Escolhe Manter se a evidência for ambígua, contraditória ou insuficiente. "
+            "Não forces uma direção nem favoreças a ordem dos intervenientes."
+        )
         response = llm.invoke(prompt)
         final_trade_decision = str(response.content) if hasattr(response, 'content') else str(response)
 

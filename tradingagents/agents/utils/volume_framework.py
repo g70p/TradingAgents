@@ -3,11 +3,18 @@ G70P Volume Framework — prompt injection for TradingAgents.
 
 Injects the user's tactical market-reading framework into agent prompts.
 Import VOLUME_FRAMEWORK and append to agent system prompts.
-Zero tokens — part of the system prompt, not a separate API call.
+The framework is interpretive context, not empirical evidence.
 """
 
 VOLUME_FRAMEWORK = """
-**Framework de Leitura de Volume G70P:**
+**Framework de Leitura de Volume G70P — hipóteses interpretativas:**
+
+As metáforas abaixo não provam intenção, manipulação, posições individuais ou P&L.
+OHLCV agregado não identifica participantes. Apresenta leituras concorrentes,
+procura confirmação independente e rejeita a hipótese quando faltam dados.
+Baixo volume também pode significar iliquidez, sazonalidade ou ausência de interesse.
+Não transformar qualquer princípio abaixo numa conclusão automática.
+
 
 O volume é o campo de batalha. Revela estratégia, tática e intenção. O preço é o resultado infligido — o placar, não o jogo.
 

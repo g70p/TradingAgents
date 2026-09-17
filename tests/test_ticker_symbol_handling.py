@@ -14,7 +14,7 @@ class TickerSymbolHandlingTests(unittest.TestCase):
     def test_build_instrument_context_mentions_exact_symbol(self):
         context = build_instrument_context("7203.T")
         self.assertIn("7203.T", context)
-        self.assertIn("exchange suffix", context)
+        self.assertIn("sufixo de bolsa", context)
 
     def test_single_get_ticker_no_shadow(self):
         # Regression: cli/main.py had a duplicate get_ticker with an empty

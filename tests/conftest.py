@@ -1,6 +1,6 @@
 """Shared pytest fixtures that prevent CI hangs when API keys are absent."""
 
-import os
+import socket
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -34,7 +34,17 @@ def _dummy_api_keys(monkeypatch):
     for env_var in _API_KEY_ENV_VARS:
         # `or` not a .get default: an env var present but empty (e.g. a key left
         # blank in a .env copied from .env.example) must still get the placeholder.
-        monkeypatch.setenv(env_var, os.environ.get(env_var) or "placeholder")
+        monkeypatch.setenv(env_var, "placeholder")
+
+
+@pytest.fixture(autouse=True)
+def _offline_network(monkeypatch):
+    """Unit tests must mock external data instead of contacting real services."""
+    def blocked(*args, **kwargs):
+        raise AssertionError("External network access is disabled in tests; mock the source")
+
+    monkeypatch.setattr(socket.socket, "connect", blocked)
+    monkeypatch.setattr(socket, "create_connection", blocked)
 
 
 @pytest.fixture(autouse=True)

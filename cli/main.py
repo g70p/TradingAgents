@@ -1,12 +1,13 @@
 import datetime
 import os
+import sys
 import time
 from collections import deque
 from functools import wraps
 from pathlib import Path
 
-import typer
 import questionary
+import typer
 from rich import box
 from rich.align import Align
 from rich.console import Console
@@ -51,6 +52,12 @@ from tradingagents.graph.analyst_execution import (
 from tradingagents.graph.trading_graph import TradingAgentsGraph
 from tradingagents.reporting import write_report_tree
 
+if sys.platform == "win32":
+    from prompt_toolkit.output.win32 import NoConsoleScreenBufferError
+    _NO_CONSOLE_ERRORS = (NoConsoleScreenBufferError,)
+else:
+    _NO_CONSOLE_ERRORS = ()
+
 console = Console()
 
 app = typer.Typer(
@@ -76,6 +83,7 @@ class MessageBuffer:
         "social": "Analista de Sentimento",
         "news": "Analista de Notícias",
         "fundamentals": "Analista de Fundamentais",
+        "math": "Analista Quantitativo",
     }
 
     # Report section mapping: section -> (analyst_key for filtering, finalizing_agent)
@@ -86,6 +94,7 @@ class MessageBuffer:
         "sentiment_report": ("social", "Sentiment Analyst"),
         "news_report": ("news", "News Analyst"),
         "fundamentals_report": ("fundamentals", "Fundamentals Analyst"),
+        "math_report": ("math", "Math Analyst"),
         "investment_plan": (None, "Research Manager"),
         "trader_investment_plan": (None, "Trader"),
         "final_trade_decision": (None, "Portfolio Manager"),
@@ -555,7 +564,7 @@ def _run_analysis_standalone(selections: dict, config: dict) -> None:
             console.print("[yellow]Verifica o ticker e tenta novamente. Exemplos: BCP.LS, EDP.LS, BTC-USD, NVDA[/yellow]")
             return
 
-        console.print(f"[dim]A analisar... (pode demorar 2-3 min)[/dim]")
+        console.print("[dim]A analisar... (pode demorar 2-3 min)[/dim]")
         final_state, decision = graph.propagate(
             selections["ticker"],
             selections["analysis_date"],
@@ -567,13 +576,13 @@ def _run_analysis_standalone(selections: dict, config: dict) -> None:
         console.print(f"[dim]{traceback.format_exc()}[/dim]")
         return
 
-    console.print(f"\n[bold cyan]Análise Concluída![/bold cyan]")
+    console.print("\n[bold cyan]Análise Concluída![/bold cyan]")
     if decision:
         console.print(Markdown(str(decision)[:800]))
     # Professor's simple explanation for end users
     prof_msg = final_state.get("professor_message", "")
     if prof_msg:
-        console.print(f"\n[bold]📱 Mensagem para Telegram:[/bold]\n")
+        console.print("\n[bold]📱 Mensagem para Telegram:[/bold]\n")
         console.print(prof_msg)
 
     try:
@@ -695,7 +704,7 @@ def get_user_selections():
         )
 
     # Step 2: Analysis date
-    default_date = datetime.datetime.now().strftime("%Y-%m-%d")
+    datetime.datetime.now().strftime("%Y-%m-%d")
     console.print(
         create_question_box(
             "Passo 2: Data da Análise",
@@ -918,6 +927,8 @@ def display_complete_report(final_state):
         analysts.append(("News Analyst", final_state["news_report"]))
     if final_state.get("fundamentals_report"):
         analysts.append(("Fundamentals Analyst", final_state["fundamentals_report"]))
+    if final_state.get("math_report"):
+        analysts.append(("Analista Quantitativo", final_state["math_report"]))
     if analysts:
         console.print(Panel("[bold]I. Relatórios da Equipa de Analistas[/bold]", border_style="cyan"))
         for title, content in analysts:
@@ -972,7 +983,7 @@ def update_research_team_status(status):
 
 
 # Ordered list of analysts for status transitions
-ANALYST_ORDER = ["market", "social", "news", "fundamentals"]
+ANALYST_ORDER = ["market", "social", "news", "fundamentals", "math"]
 ANALYST_AGENT_NAMES = {
     "market": "Market Analyst",
     "social": "Sentiment Analyst",
@@ -1263,40 +1274,8 @@ def run_analysis(checkpoint: bool | None = None, quick: bool = False, ticker: st
         )
         update_display(layout, spinner_text, stats_handler=stats_handler, start_time=start_time)
 
-        # Initialize state and get graph args with callbacks.
-        # Resolve the instrument identity once here so all agents anchor to
-        # the real company (#814). Also inject memory, crypto, and market
-        # session context — same as TradingAgentsGraph._run_graph().
-        instrument_context = graph.resolve_instrument_context(
-            selections["ticker"], selections["asset_type"]
-        )
-        past_context = graph.memory_log.get_past_context(selections["ticker"])
-        init_agent_state = graph.propagator.create_initial_state(
-            selections["ticker"],
-            selections["analysis_date"],
-            asset_type=selections["asset_type"],
-            instrument_context=instrument_context,
-            past_context=past_context,
-        )
-
-        # Inject crypto on-chain data (mirrors _run_graph)
-        if selections["asset_type"] == "crypto":
-            from tradingagents.dataflows.crypto_onchain import get_crypto_onchain_summary
-            onchain = get_crypto_onchain_summary(selections["ticker"])
-            if onchain and "indisponível" not in onchain.split("\n")[0].lower():
-                init_agent_state["crypto_onchain_data"] = onchain
-
-        # Inject market session context (mirrors _run_graph)
-        from tradingagents.dataflows.market_sessions import get_market_context_for_state
-        market_ctx = get_market_context_for_state(selections["ticker"], selections["asset_type"])
-        if market_ctx:
-            init_agent_state["market_session_context"] = market_ctx
-        # Pass callbacks to graph config for tool execution tracking
-        # (LLM tracking is handled separately via LLM constructor)
-        args = graph.propagator.get_graph_args(callbacks=[stats_handler])
-
+        # propagate owns context, memory and checkpoint lifecycle.
         # Stream the analysis
-        trace = []
         analysis_error = None
         try:
             # Use propagate() — the stable, tested path
@@ -1305,7 +1284,6 @@ def run_analysis(checkpoint: bool | None = None, quick: bool = False, ticker: st
                 selections["analysis_date"],
                 asset_type=selections.get("asset_type", "stock"),
             )
-            trace = [final_state]
         except Exception as e:
             analysis_error = str(e)
             message_buffer.add_message("Sistema", f"❌ ERRO: {e}")
@@ -1329,7 +1307,7 @@ def run_analysis(checkpoint: bool | None = None, quick: bool = False, ticker: st
     # Professor message
     prof_msg = final_state.get("professor_message", "")
     if prof_msg:
-        console.print(f"\n[bold]📱 Mensagem para Telegram:[/bold]\n")
+        console.print("\n[bold]📱 Mensagem para Telegram:[/bold]\n")
         console.print(prof_msg)
 
     if quick:
@@ -1396,7 +1374,14 @@ def analyze(
         from tradingagents.graph.checkpointer import clear_all_checkpoints
         n = clear_all_checkpoints(DEFAULT_CONFIG["data_cache_dir"])
         console.print(f"[yellow]{n} checkpoint(s) apagados.[/yellow]")
-    run_analysis(checkpoint=checkpoint, quick=quick, ticker=ticker)
+    try:
+        run_analysis(checkpoint=checkpoint, quick=quick, ticker=ticker)
+    except _NO_CONSOLE_ERRORS:
+        typer.echo(
+            "Sem consola Windows disponível. Executa num terminal PowerShell, "
+            "Windows Terminal ou cmd, ou usa analyze --quick TICKER.", err=True,
+        )
+        raise typer.Exit(code=1) from None
 
 
 if __name__ == "__main__":

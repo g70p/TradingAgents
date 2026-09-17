@@ -44,7 +44,7 @@ class TestLanguageInstruction:
         set_config({"output_language": "中文"})
         out = get_language_instruction()
         assert "中文" in out
-        assert "entire response" in out
+        assert "toda a tua resposta" in out
 
 
 @pytest.mark.unit

@@ -23,6 +23,8 @@ def get_atr_position_sizing(
     risk_percent: float = 1.0,
     atr_multiplier: float = 2.0,
     lookback_days: int = 30,
+    unit_step: float | None = None,
+    side: str = "long",
 ) -> str:
     """Calculate ATR-based position sizing for a ticker.
 
@@ -53,7 +55,8 @@ def get_atr_position_sizing(
             return f"⚠️ Dados insuficientes para {ticker}: apenas {len(data)} candles disponíveis (mínimo 15 para ATR(14))."
 
         # Use data up to the trade date
-        data = data[data.index <= trade_date + timedelta(days=1)]
+        local_dates = data.index.tz_localize(None).normalize()
+        data = data[local_dates <= trade_date]
         if len(data) < 15:
             return f"⚠️ Dados insuficientes até à data {current_date} para {ticker}."
 
@@ -71,6 +74,8 @@ def get_atr_position_sizing(
             account_balance=account_balance,
             risk_percent=risk_percent,
             atr_multiplier=atr_multiplier,
+            unit_step=unit_step if unit_step is not None else (1e-8 if normalized.endswith("-USD") else 1.0),
+            side=side,
         )
 
     except Exception as e:

@@ -1,48 +1,55 @@
-"""Shared 5-tier rating vocabulary and a deterministic heuristic parser.
+"""Canonical PT-PT/English decisions; invalid output requires REVIEW.
 
-The same five-tier scale (Buy, Overweight, Hold, Underweight, Sell) is used by:
-- The Research Manager (investment plan recommendation)
-- The Portfolio Manager (final position decision)
-- The signal processor (rating extracted for downstream consumers)
-- The memory log (rating tag stored alongside each decision entry)
-
-Centralising it here avoids drift between those call sites.
+Adapted from upstream 43fc275. Narrative mentions must not become signals.
 """
-
 from __future__ import annotations
 
 import re
+import unicodedata
 
-# Canonical, ordered 5-tier scale (most bullish to most bearish).
-RATINGS_5_TIER: tuple[str, ...] = (
-    "Buy", "Overweight", "Hold", "Underweight", "Sell",
+RATINGS_5_TIER = ("Buy", "Overweight", "Hold", "Underweight", "Sell")
+RATING_REVIEW = "REVIEW"
+_ALIASES = {
+    "buy": "Buy", "comprar": "Buy", "compra": "Buy",
+    "overweight": "Overweight", "sobreponderar": "Overweight",
+    "hold": "Hold", "manter": "Hold",
+    "underweight": "Underweight", "subponderar": "Underweight",
+    "sell": "Sell", "vender": "Sell", "venda": "Sell",
+    "review": RATING_REVIEW, "rever": RATING_REVIEW,
+}
+_LABEL = re.compile(
+    r"^\s*(?:(?:\d+[.)]|[-*])\s*)?(rating|classificação|classificacao|ação|acao|action|"
+    r"recomendação|recomendacao)\s*[:：-]\s*(\w+)(.*)$", re.IGNORECASE,
 )
+_CHOICE_LIST = re.compile(r"[/|<>]|\b(?:ou|or)\b", re.IGNORECASE)
 
-_RATING_SET = {r.lower() for r in RATINGS_5_TIER}
 
-# Matches "Rating: X" / "rating - X" / "Rating: **X**" — tolerates markdown
-# bold wrappers and either a colon or hyphen separator.
-_RATING_LABEL_RE = re.compile(r"rating.*?[:\-][\s*]*(\w+)", re.IGNORECASE)
+def extract_rating(text: str) -> str | None:
+    """Read explicit fields, or a response consisting solely of one rating."""
+    if not text:
+        return None
+    norm = unicodedata.normalize("NFKC", text).replace("**", "").replace("`", "")
+    ratings = set()
+    for line in norm.splitlines():
+        match = _LABEL.match(line)
+        if match:
+            value = _ALIASES.get(match.group(2).casefold())
+            if value is None and match.group(1).casefold() in {"ação", "acao", "action"}:
+                # AVA action paragraphs are narrative, not a rating field.
+                continue
+            if value is None or _CHOICE_LIST.search(match.group(3)):
+                return None
+            ratings.add(value)
+    if ratings:
+        return ratings.pop() if len(ratings) == 1 else None
+    return _ALIASES.get(norm.strip().rstrip(".!;").casefold())
 
 
 def parse_rating(text: str, default: str = "Hold") -> str:
-    """Heuristically extract a 5-tier rating from prose text.
+    """Compatibility wrapper. Operational consumers should use extract_rating."""
+    rating = extract_rating(text)
+    return rating if rating is not None else default
 
-    Two-pass strategy:
-    1. Look for an explicit "Rating: X" label (tolerant of markdown bold).
-    2. Fall back to the first 5-tier rating word found anywhere in the text.
 
-    Returns a Title-cased rating string, or ``default`` if no rating word appears.
-    """
-    for line in text.splitlines():
-        m = _RATING_LABEL_RE.search(line)
-        if m and m.group(1).lower() in _RATING_SET:
-            return m.group(1).capitalize()
-
-    for line in text.splitlines():
-        for word in line.lower().split():
-            clean = word.strip("*:.,")
-            if clean in _RATING_SET:
-                return clean.capitalize()
-
-    return default
+def is_review(signal: str) -> bool:
+    return signal == RATING_REVIEW

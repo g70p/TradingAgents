@@ -14,7 +14,7 @@ Supports:
 
 from __future__ import annotations
 
-from datetime import datetime, time, timedelta
+from datetime import date, datetime, time, timedelta, timezone
 from enum import Enum
 from zoneinfo import ZoneInfo
 
@@ -64,8 +64,10 @@ def _get_exchange_for_ticker(ticker: str, asset_type: str = "stock") -> MarketEx
     # Euronext Lisbon suffixes
     if ticker_upper.endswith(".LS"):
         return MarketExchange.EURONEXT_LISBON
-    # Default: NYSE/NASDAQ for US stocks
-    return MarketExchange.NYSE
+    # A simple US symbol only; do not assign European/FX/futures to New York.
+    if ticker_upper.isalpha():
+        return MarketExchange.NYSE
+    return None
 
 
 def _get_session_for_exchange(exchange: MarketExchange, dt: datetime | None = None) -> dict:
@@ -75,7 +77,7 @@ def _get_session_for_exchange(exchange: MarketExchange, dt: datetime | None = No
     a human-readable status string.
     """
     if exchange == MarketExchange.CRYPTO:
-        now = dt or datetime.now()
+        now = dt.astimezone(timezone.utc) if dt and dt.tzinfo else (dt or datetime.now(timezone.utc))
         is_weekend = now.weekday() >= 5  # Saturday=5, Sunday=6
         return {
             "session": MarketSession.ALWAYS_OPEN,
@@ -125,7 +127,6 @@ def _get_session_for_exchange(exchange: MarketExchange, dt: datetime | None = No
         session = MarketSession.OPEN
         mins_to_close = (datetime.combine(now.date(), close_time) - datetime.combine(now.date(), current_time)).seconds // 60
         status = f"🟢 Mercado aberto (fecha em {mins_to_close} min)"
-        next_close = now.replace(hour=close_time.hour, minute=close_time.minute, second=0)
         next_event = f"Fecha às {close_time.strftime('%H:%M')}"
     else:
         session = MarketSession.AFTER_HOURS
@@ -134,7 +135,7 @@ def _get_session_for_exchange(exchange: MarketExchange, dt: datetime | None = No
         next_day = now + timedelta(days=1)
         if next_day.weekday() >= 5:
             days_to_monday = 7 - next_day.weekday()
-            next_day = now + timedelta(days=days_to_monday)
+            next_day = next_day + timedelta(days=days_to_monday)
         next_open = next_day.replace(hour=open_time.hour, minute=open_time.minute, second=0)
         next_event = f"Abre {next_open.strftime('%A %d/%m')} às {open_time.strftime('%H:%M')}"
 
@@ -161,6 +162,10 @@ def get_market_session_info(ticker: str, asset_type: str = "stock", dt: datetime
         Dict with session, status, recommendations, and agent guidance
     """
     exchange = _get_exchange_for_ticker(ticker, asset_type)
+    if exchange is None:
+        return {"session": None, "exchange": "unknown", "exchange_label": "Não identificado",
+                "status": "Indisponível", "local_time": "N/D", "next_event": "N/D",
+                "calendar_verified": False}
     info = _get_session_for_exchange(exchange, dt)
 
     # Add trading implications
@@ -198,6 +203,11 @@ def get_market_session_info(ticker: str, asset_type: str = "stock", dt: datetime
             "Usa o último preço de fecho como referência."
         )
 
+    info["calendar_verified"] = exchange == MarketExchange.CRYPTO
+    if exchange != MarketExchange.CRYPTO:
+        info["status"] = "Estimativa de horário habitual: " + info["status"]
+        info["next_event"] = "Horário indicativo; confirmar feriados e fechos antecipados. " + info["next_event"]
+        info["agent_guidance"] = "Calendário oficial não verificado: não inferir abertura nem execução imediata. Confirmar na bolsa/corretora."
     info["exchange"] = exchange.value if exchange else "unknown"
     return info
 
@@ -222,10 +232,12 @@ def format_market_session_for_prompt(ticker: str, asset_type: str = "stock", dt:
     return "\n".join(lines)
 
 
-def get_market_context_for_state(ticker: str, asset_type: str = "stock") -> str:
+def get_market_context_for_state(ticker: str, asset_type: str = "stock", trade_date: str | None = None) -> str:
     """Return market session context for injection into the initial graph state.
 
     Called once at the start of each run so all 11 agents share the same
     market session awareness without each having to recompute it.
     """
+    if trade_date and date.fromisoformat(trade_date) != date.today():
+        return f"Sessão histórica de {trade_date}: indisponível sem hora de referência e calendário verificado. Não usar o estado atual."
     return format_market_session_for_prompt(ticker, asset_type)

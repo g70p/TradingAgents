@@ -3,26 +3,15 @@
 import json
 import logging
 import os
+import sys
 from contextlib import contextmanager
 from datetime import datetime, timedelta
 from io import StringIO
 from pathlib import Path
 from typing import Any
-import sys
 
 import yfinance as yf
 from langgraph.prebuilt import ToolNode
-
-
-@contextmanager
-def _suppress_yfinance_output():
-    """Silence yfinance print() spam (e.g. '$SPY: possibly delisted')."""
-    old_stdout, old_stderr = sys.stdout, sys.stderr
-    sys.stdout = sys.stderr = StringIO()
-    try:
-        yield
-    finally:
-        sys.stdout, sys.stderr = old_stdout, old_stderr
 
 # Import the abstract tool methods from agent_utils
 from tradingagents.agents.utils.agent_utils import (
@@ -58,6 +47,18 @@ from .reflection import Reflector
 from .setup import GraphSetup
 from .signal_processing import SignalProcessor
 
+
+@contextmanager
+def _suppress_yfinance_output():
+    """Silence yfinance print() spam (e.g. '$SPY: possibly delisted')."""
+    old_stdout, old_stderr = sys.stdout, sys.stderr
+    sys.stdout = sys.stderr = StringIO()
+    try:
+        yield
+    finally:
+        sys.stdout, sys.stderr = old_stdout, old_stderr
+
+
 logger = logging.getLogger(__name__)
 
 
@@ -76,6 +77,19 @@ def _coerce_max_retries(value):
         raise ValueError(f"llm_max_retries must be an integer, got {value!r}") from exc
     if n < 0:
         raise ValueError(f"llm_max_retries must be >= 0, got {n}")
+    return n
+
+
+def _coerce_max_tokens(value):
+    """Validate a ``max_tokens`` value to a positive int (env vars are strings)."""
+    if isinstance(value, bool):
+        raise ValueError(f"max_tokens must be an integer, not a boolean: {value!r}")
+    try:
+        n = int(value)
+    except (TypeError, ValueError) as exc:
+        raise ValueError(f"max_tokens must be an integer, got {value!r}") from exc
+    if n <= 0:
+        raise ValueError(f"max_tokens must be > 0, got {n}")
     return n
 
 
@@ -166,6 +180,7 @@ class TradingAgentsGraph:
         self.workflow = self.graph_setup.setup_graph(selected_analysts)
         self.graph = self.workflow.compile()
         self._checkpointer_ctx = None
+        self._resuming = False
 
     def _get_provider_kwargs(self) -> dict[str, Any]:
         """Get provider-specific kwargs for LLM client creation."""
@@ -199,6 +214,13 @@ class TradingAgentsGraph:
         max_retries = self.config.get("llm_max_retries")
         if max_retries is not None and max_retries != "":
             kwargs["max_retries"] = _coerce_max_retries(max_retries)
+
+        # Output-token cap is cross-provider, but Gemini names it
+        # ``max_output_tokens``; forward under the right key when set (#1204).
+        max_tokens = self.config.get("max_tokens")
+        if max_tokens is not None and max_tokens != "":
+            key = "max_output_tokens" if provider == "google" else "max_tokens"
+            kwargs[key] = _coerce_max_tokens(max_tokens)
 
         return kwargs
 
@@ -289,14 +311,14 @@ class TradingAgentsGraph:
     def _fetch_returns(
         self, ticker: str, trade_date: str, holding_days: int = None,
         benchmark: str = "SPY", asset_type: str = "stock",
-    ) -> tuple[float | None, float | None, int | None]:
+    ) -> tuple[float | None, float | None, int | None, str | None]:
         """Fetch raw and alpha return for ticker over holding_days from trade_date.
 
         ``benchmark`` is the index used as the alpha baseline (resolved by the
         caller via ``_resolve_benchmark``). ``asset_type`` selects the holding
         period from config when ``holding_days`` is not explicitly provided.
-        Returns ``(raw_return, alpha_return, actual_holding_days)`` or
-        ``(None, None, None)`` if price data is unavailable.
+        Returns ``(raw_return, alpha_return, holding_days, resolution_date)``.
+        Returns four None values when the full holding window is unavailable.
         """
         if holding_days is None:
             holding_days = self._get_holding_days(asset_type)
@@ -314,26 +336,31 @@ class TradingAgentsGraph:
                 stock = yf.Ticker(normalize_symbol(ticker)).history(start=trade_date, end=end_str)
                 bench = yf.Ticker(benchmark).history(start=trade_date, end=end_str)
 
-            if len(stock) < 2 or len(bench) < 2:
-                return None, None, None
+            # Require the full holding window in both series. A rerun before it
+            # has traded leaves the entry pending to retry next run, rather than
+            # settling on a premature partial return (#1169).
+            if len(stock) <= holding_days or len(bench) <= holding_days:
+                return None, None, None, None
 
-            actual_days = min(holding_days, len(stock) - 1, len(bench) - 1)
             raw = float(
-                (stock["Close"].iloc[actual_days] - stock["Close"].iloc[0])
+                (stock["Close"].iloc[holding_days] - stock["Close"].iloc[0])
                 / stock["Close"].iloc[0]
             )
             bench_ret = float(
-                (bench["Close"].iloc[actual_days] - bench["Close"].iloc[0])
+                (bench["Close"].iloc[holding_days] - bench["Close"].iloc[0])
                 / bench["Close"].iloc[0]
             )
             alpha = raw - bench_ret
-            return raw, alpha, actual_days
+            # The date of the last price bar used is when this outcome became
+            # known — the point-in-time cutoff for injecting the lesson (#1251).
+            resolution_date = stock.index[holding_days].strftime("%Y-%m-%d")
+            return raw, alpha, holding_days, resolution_date
         except Exception as e:
             logger.warning(
                 "Could not resolve outcome for %s on %s vs %s (will retry next run): %s",
                 ticker, trade_date, benchmark, e,
             )
-            return None, None, None
+            return None, None, None, None
 
     def _resolve_pending_entries(self, ticker: str) -> None:
         """Resolve pending log entries for ticker at the start of a new run.
@@ -352,7 +379,7 @@ class TradingAgentsGraph:
         benchmark = self._resolve_benchmark(ticker)
         updates = []
         for entry in pending:
-            raw, alpha, days = self._fetch_returns(
+            raw, alpha, days, resolution_date = self._fetch_returns(
                 ticker, entry["date"], benchmark=benchmark,
             )
             if raw is None:
@@ -370,6 +397,7 @@ class TradingAgentsGraph:
                 "alpha_return": alpha,
                 "holding_days": days,
                 "reflection": reflection,
+                "resolution_date": resolution_date,
             })
 
         if updates:
@@ -386,6 +414,17 @@ class TradingAgentsGraph:
         """
         identity = resolve_instrument_identity(ticker)
         return build_instrument_context(ticker, asset_type, identity)
+
+    def _memory_as_of(self, trade_date) -> str | None:
+        """Point-in-time cutoff for past-context lessons (#1251).
+
+        A historical/backtest run (trade date before today) filters lessons to
+        those already resolved by the trade date. A current-date run returns
+        None, disabling the filter so live behavior and pre-migration entries
+        (which have no stored resolution date) are unaffected.
+        """
+        td = str(trade_date)
+        return td if td < datetime.now().strftime("%Y-%m-%d") else None
 
     def _run_signature(self, asset_type: str) -> str:
         """Graph-shape inputs that must invalidate a checkpoint if changed.
@@ -410,38 +449,86 @@ class TradingAgentsGraph:
         ``checkpoint_enabled`` is set in config, the graph is recompiled with
         a per-ticker SqliteSaver so a crashed run can resume from the last
         successful node on a subsequent invocation with the same ticker+date.
+
+        Returns ``(final_state, signal)`` where ``signal`` is one of the 5-tier
+        ratings (Buy / Overweight / Hold / Underweight / Sell) or ``"REVIEW"``
+        when the decision had no parseable rating (#1170); guard with
+        ``tradingagents.agents.utils.rating.is_review`` before mapping it to the
+        PortfolioRating enum.
         """
         self.ticker = company_name
 
         # Resolve any pending memory-log entries for this ticker before the pipeline runs.
         self._resolve_pending_entries(company_name)
 
-        # Recompile with a checkpointer if the user opted in.
-        if self.config.get("checkpoint_enabled"):
-            self._checkpointer_ctx = get_checkpointer(
-                self.config["data_cache_dir"], company_name
+        with self.checkpoint_scope(company_name, trade_date, asset_type) as thread_id_value:
+            return self._run_graph(
+                company_name, trade_date, asset_type=asset_type,
+                checkpoint_thread_id=thread_id_value,
             )
-            saver = self._checkpointer_ctx.__enter__()
-            self.graph = self.workflow.compile(checkpointer=saver)
 
-            step = checkpoint_step(
+    def begin_checkpoint(self, company_name, trade_date, asset_type: str = "stock") -> str | None:
+        """Recompile the graph with a per-ticker checkpointer and return the
+        ``thread_id`` to inject into the stream/invoke ``config`` (or ``None``
+        when checkpointing is disabled).
+
+        Pair every call with :meth:`end_checkpoint` in a ``finally``. Both
+        ``propagate`` (via :meth:`checkpoint_scope`) and the CLI stream path use
+        this so ``--checkpoint`` actually resumes (#1249); previously the setup
+        lived only inside ``propagate`` and the CLI streamed the checkpointer-less
+        graph, making the flag a no-op.
+        """
+        self._resuming = False
+        if not self.config.get("checkpoint_enabled"):
+            return None
+        signature = self._run_signature(asset_type)
+        self._checkpointer_ctx = get_checkpointer(self.config["data_cache_dir"], company_name)
+        saver = self._checkpointer_ctx.__enter__()
+        self.graph = self.workflow.compile(checkpointer=saver)
+
+        step = checkpoint_step(
+            self.config["data_cache_dir"], company_name, str(trade_date), signature
+        )
+        self._resuming = step is not None
+        if step is not None:
+            logger.info("Resuming from step %d for %s on %s", step, company_name, trade_date)
+        else:
+            logger.info("Starting fresh for %s on %s", company_name, trade_date)
+        return thread_id(company_name, str(trade_date), signature)
+
+    def checkpoint_input(self, init_state):
+        """The value to stream/invoke: ``None`` to resume an existing checkpoint,
+        else the initial state for a fresh run.
+
+        LangGraph resumes an interrupted thread when invoked with ``None``;
+        re-passing the initial state instead appends it through the message
+        reducer, duplicating messages in the resumed state (#1249).
+        """
+        return None if self._resuming else init_state
+
+    def end_checkpoint(self):
+        """Restore the plain uncheckpointed graph after a checkpointed run."""
+        if self._checkpointer_ctx is not None:
+            self._checkpointer_ctx.__exit__(None, None, None)
+            self._checkpointer_ctx = None
+            self.graph = self.workflow.compile()
+        self._resuming = False
+
+    @contextmanager
+    def checkpoint_scope(self, company_name, trade_date, asset_type: str = "stock"):
+        """Context-manager form of begin/end_checkpoint for the propagate path."""
+        try:
+            yield self.begin_checkpoint(company_name, trade_date, asset_type)
+        finally:
+            self.end_checkpoint()
+
+    def clear_checkpoint_on_success(self, company_name, trade_date, asset_type: str = "stock"):
+        """Drop a completed run's checkpoint so a later run starts fresh (#1249)."""
+        if self.config.get("checkpoint_enabled"):
+            clear_checkpoint(
                 self.config["data_cache_dir"], company_name, str(trade_date),
                 self._run_signature(asset_type),
             )
-            if step is not None:
-                logger.info(
-                    "Resuming from step %d for %s on %s", step, company_name, trade_date
-                )
-            else:
-                logger.info("Starting fresh for %s on %s", company_name, trade_date)
-
-        try:
-            return self._run_graph(company_name, trade_date, asset_type=asset_type)
-        finally:
-            if self._checkpointer_ctx is not None:
-                self._checkpointer_ctx.__exit__(None, None, None)
-                self._checkpointer_ctx = None
-                self.graph = self.workflow.compile()
 
     def collect_data(self, ticker: str, trade_date: str, asset_type: str = "stock") -> dict:
         """Run only the data-collection tools — zero LLM calls, zero tokens.
@@ -462,94 +549,55 @@ class TradingAgentsGraph:
             ``income_statement``, ``instrument_context``, ``market_session``,
             ``collection_time``.
         """
-        from datetime import datetime, timedelta
+        requested = datetime.strptime(trade_date, "%Y-%m-%d").date()
+        if requested > datetime.now().date():
+            raise ValueError("Future analysis date")
+        historical = requested < datetime.now().date()
+        start_date = (requested - timedelta(days=7)).isoformat()
+        data = {}
+        errors = []
 
-        start_date = (datetime.strptime(trade_date, "%Y-%m-%d") - timedelta(days=7)).strftime("%Y-%m-%d")
-
-        data: dict[str, str] = {}
-        collection_errors: list[str] = []
-
-        # ── Instrument / market context (deterministic, no LLM) ──────
-        try:
-            data["instrument_context"] = self.resolve_instrument_context(ticker, asset_type)
-        except Exception as exc:
-            data["instrument_context"] = f"(indisponível: {exc})"
-
-        try:
-            data["market_session"] = get_market_context_for_state(ticker, asset_type) or ""
-        except Exception as exc:
-            data["market_session"] = f"(indisponível: {exc})"
-
-        # ── Ticker-specific news ────────────────────────────────────
-        try:
-            data["ticker_news"] = route_to_vendor("get_news", ticker, start_date, trade_date)
-        except Exception as exc:
-            collection_errors.append(f"ticker_news: {exc}")
-            data["ticker_news"] = f"(indisponível: {exc})"
-
-        # ── Global / macro news (includes Portuguese RSS) ───────────
-        try:
-            data["global_news"] = route_to_vendor("get_global_news", trade_date)
-        except Exception as exc:
-            collection_errors.append(f"global_news: {exc}")
-            data["global_news"] = f"(indisponível: {exc})"
-
-        # ── Market snapshot (OHLCV) ──────────────────────────────────
-        try:
-            data["market_snapshot"] = route_to_vendor("get_stock_data", ticker, start_date, trade_date)
-        except Exception as exc:
-            collection_errors.append(f"market_snapshot: {exc}")
-            data["market_snapshot"] = f"(indisponível: {exc})"
-
-        # ── Technical indicators ────────────────────────────────────
-        try:
-            data["indicators"] = route_to_vendor("get_indicators", ticker, start_date, trade_date)
-        except Exception as exc:
-            collection_errors.append(f"indicators: {exc}")
-            data["indicators"] = f"(indisponível: {exc})"
-
-        # ── Insider transactions ────────────────────────────────────
-        try:
-            data["insider_tx"] = route_to_vendor("get_insider_transactions", ticker)
-        except Exception as exc:
-            data["insider_tx"] = f"(indisponível: {exc})"
-
-        # ── Macro indicators ────────────────────────────────────────
-        try:
-            data["macro"] = route_to_vendor("get_macro_indicators", "")
-        except Exception as exc:
-            data["macro"] = f"(indisponível: {exc})"
-
-        # ── Prediction markets ──────────────────────────────────────
-        try:
-            data["prediction_markets"] = route_to_vendor("get_prediction_markets", "")
-        except Exception as exc:
-            data["prediction_markets"] = f"(indisponível: {exc})"
-
-        # ── Fundamentals (stocks only) ──────────────────────────────
-        if asset_type == "stock":
-            for tool_name in ("get_fundamentals", "get_balance_sheet", "get_cashflow", "get_income_statement"):
-                key = tool_name.replace("get_", "")
-                try:
-                    data[key] = route_to_vendor(tool_name, ticker)
-                except Exception as exc:
-                    data[key] = f"(indisponível: {exc})"
-        else:
-            for key in ("fundamentals", "balance_sheet", "cashflow", "income_statement"):
-                data[key] = ""
-
-        # ── Crypto on-chain (crypto only) ───────────────────────────
-        if asset_type == "crypto":
+        def collect(key, function):
             try:
-                data["crypto_onchain"] = get_crypto_onchain_summary(ticker)
+                value = function()
+                if not value or str(value).startswith(("⚠", "Error", "(indisponível")):
+                    errors.append(f"{key}: unavailable")
+                data[key] = value
             except Exception as exc:
-                data["crypto_onchain"] = f"(indisponível: {exc})"
+                errors.append(f"{key}: {exc}")
+                data[key] = f"(indisponível: {exc})"
+
+        collect("market_session", lambda: get_market_context_for_state(ticker, asset_type, trade_date))
+        if historical:
+            data["instrument_context"] = f"Símbolo pedido: {ticker}; identidade atual não usada como prova histórica."
         else:
-            data["crypto_onchain"] = ""
-
-        data["collection_errors"] = " | ".join(collection_errors) if collection_errors else ""
+            collect("instrument_context", lambda: self.resolve_instrument_context(ticker, asset_type))
+        collect("ticker_news", lambda: route_to_vendor("get_news", ticker, start_date, trade_date))
+        collect("global_news", lambda: route_to_vendor("get_global_news", trade_date))
+        collect("market_snapshot", lambda: route_to_vendor("get_stock_data", ticker, start_date, trade_date))
+        collect("indicators", lambda: route_to_vendor("get_indicators", ticker, "rsi", trade_date, 30))
+        collect("macro", lambda: route_to_vendor("get_macro_indicators", "DFF", trade_date, 365))
+        for key, function in {
+            "insider_tx": lambda: route_to_vendor("get_insider_transactions", ticker),
+            "prediction_markets": lambda: route_to_vendor("get_prediction_markets", ticker),
+            "crypto_onchain": lambda: get_crypto_onchain_summary(ticker) if asset_type == "crypto" else "Não aplicável",
+        }.items():
+            if historical:
+                data[key] = "Indisponível: fonte atual sem arquivo histórico verificável."
+                errors.append(f"{key}: no historical snapshot")
+            else:
+                collect(key, function)
+        for tool in ("get_fundamentals", "get_balance_sheet", "get_cashflow", "get_income_statement"):
+            key = tool.removeprefix("get_")
+            if asset_type != "stock":
+                data[key] = "Não aplicável"
+            elif historical:
+                data[key] = "Indisponível: datas de publicação/vintage não verificadas; período contabilístico não basta."
+                errors.append(f"{key}: no verified publication vintage")
+            else:
+                collect(key, lambda tool=tool: route_to_vendor(tool, ticker, curr_date=trade_date))
+        data["collection_errors"] = " | ".join(errors)
         data["collection_time"] = datetime.now().isoformat()
-
         return data
 
     def save_reports(self, final_state, ticker, save_path=None) -> Path:
@@ -567,12 +615,19 @@ class TradingAgentsGraph:
             )
         return write_report_tree(final_state, ticker, save_path)
 
-    def _run_graph(self, company_name, trade_date, asset_type: str = "stock"):
+    def _run_graph(self, company_name, trade_date, asset_type: str = "stock",
+                   checkpoint_thread_id: str | None = None):
         """Execute the graph and write the resulting state to disk and memory log."""
         # Initialize state — inject memory log context for PM and the
-        # deterministically resolved instrument identity for all agents.
-        past_context = self.memory_log.get_past_context(company_name)
-        instrument_context = self.resolve_instrument_context(company_name, asset_type)
+        # deterministically resolved instrument identity for all agents. On a
+        # historical run, gate lessons to those whose outcome was known by the
+        # trade date so a backtest can't learn from the future (#1251).
+        past_context = self.memory_log.get_past_context(
+            company_name, as_of=self._memory_as_of(trade_date)
+        )
+        instrument_context = (f"Símbolo pedido: {company_name}; identidade histórica não verificada."
+                              if self._memory_as_of(trade_date) else
+                              self.resolve_instrument_context(company_name, asset_type))
         init_agent_state = self.propagator.create_initial_state(
             company_name,
             trade_date,
@@ -582,29 +637,30 @@ class TradingAgentsGraph:
         )
 
         # Inject crypto on-chain data into the state when analysing crypto assets
-        if asset_type == "crypto":
+        if asset_type == "crypto" and self._memory_as_of(trade_date) is None:
             onchain_data = get_crypto_onchain_summary(company_name)
             if onchain_data and "indisponível" not in onchain_data.split("\n")[0].lower():
                 init_agent_state["crypto_onchain_data"] = onchain_data
                 logger.info("Injected crypto on-chain data for %s", company_name)
 
         # Inject market session context — all agents know if market is open/closed
-        market_context = get_market_context_for_state(company_name, asset_type)
+        market_context = get_market_context_for_state(company_name, asset_type, trade_date)
         if market_context:
             init_agent_state["market_session_context"] = market_context
             logger.debug("Injected market session context for %s", company_name)
         args = self.propagator.get_graph_args()
 
-        # Inject thread_id so same ticker+date+graph-shape resumes; a different
-        # date or graph shape starts fresh (#1089).
-        if self.config.get("checkpoint_enabled"):
-            tid = thread_id(company_name, str(trade_date), self._run_signature(asset_type))
-            args.setdefault("config", {}).setdefault("configurable", {})["thread_id"] = tid
+        # Inject the checkpoint thread_id (from checkpoint_scope) so the same
+        # ticker+date+graph-shape resumes; a different one starts fresh (#1089).
+        if checkpoint_thread_id is not None:
+            args.setdefault("config", {}).setdefault("configurable", {})["thread_id"] = checkpoint_thread_id
 
+        # None resumes an existing checkpoint; init_agent_state starts fresh (#1249).
+        graph_input = self.checkpoint_input(init_agent_state)
         if self.debug:
             trace = []
             last_printed = None
-            for chunk in self.graph.stream(init_agent_state, **args):
+            for chunk in self.graph.stream(graph_input, **args):
                 if chunk["messages"]:
                     msg = chunk["messages"][-1]
                     # Nodes after the trader don't append to messages, so the
@@ -621,7 +677,7 @@ class TradingAgentsGraph:
             for chunk in trace:
                 final_state.update(chunk)
         else:
-            final_state = self.graph.invoke(init_agent_state, **args)
+            final_state = self.graph.invoke(graph_input, **args)
 
         # Store current state for reflection.
         self.curr_state = final_state
@@ -637,11 +693,7 @@ class TradingAgentsGraph:
         )
 
         # Clear checkpoint on successful completion to avoid stale state.
-        if self.config.get("checkpoint_enabled"):
-            clear_checkpoint(
-                self.config["data_cache_dir"], company_name, str(trade_date),
-                self._run_signature(asset_type),
-            )
+        self.clear_checkpoint_on_success(company_name, trade_date, asset_type)
 
         return final_state, self.process_signal(final_state["final_trade_decision"])
 

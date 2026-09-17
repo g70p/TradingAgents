@@ -147,3 +147,10 @@ class TestReasoningEffortSkippedFromEnv(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+@pytest.fixture(autouse=True)
+def _choose_analysis_menu(monkeypatch):
+    """The fork adds a menu before the existing selection flow."""
+    import cli.main as module
+    monkeypatch.setattr(module.questionary, "select", lambda *a, **k: mock.Mock(ask=lambda: "analyze"))

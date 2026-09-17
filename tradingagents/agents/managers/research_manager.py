@@ -9,7 +9,6 @@ from tradingagents.agents.utils.agent_utils import (
 from tradingagents.agents.utils.volume_framework import VOLUME_FRAMEWORK
 
 
-
 def create_research_manager(llm):
 
     def research_manager_node(state) -> dict:
@@ -34,7 +33,7 @@ Toda a tua resposta DEVE seguir o método AVA (Análise → Validação → Aç�
 - **Subponderar**: Visão cautelosa; recomenda reduzir a exposição
 - **Vender**: Forte convicção na tese bear; recomenda sair ou evitar a posição
 
-Assume uma posição clara sempre que os argumentos mais fortes do debate o justifiquem; reserva Manter para situações em que as evidências de ambos os lados estão genuinamente equilibradas.
+Assume uma posição clara sempre que os argumentos mais fortes do debate o justifiquem; escolhe Manter quando as evidências estão equilibradas, ambíguas ou insuficientes.
 
 ---
 
@@ -48,6 +47,12 @@ Assume uma posição clara sempre que os argumentos mais fortes do debate o just
 - **Validação**: <confirmação cruzada com os dados de mercado; há divergências?>
 - **Ação**: <plano de investimento claro e acionável: rating + justificação>""" + VOLUME_FRAMEWORK + get_language_instruction()
 
+        prompt += "\nRelatório quantitativo:\n" + state.get("math_report", "")
+        prompt += (
+            "\nUsa apenas os dados fornecidos; não chames ferramentas externas. "
+            "Escolhe Manter se a evidência for ambígua, contraditória ou insuficiente. "
+            "Não forces uma direção nem favoreças a ordem dos intervenientes."
+        )
         response = llm.invoke(prompt)
         investment_plan = str(response.content) if hasattr(response, 'content') else str(response)
 

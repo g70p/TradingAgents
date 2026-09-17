@@ -7,9 +7,12 @@ Usado como fonte complementar de sentimento para o analista.
 from __future__ import annotations
 
 import logging
-from urllib.request import Request, urlopen
-from urllib.error import URLError, HTTPError
+import re
+from urllib.error import HTTPError, URLError
 from urllib.parse import quote_plus
+from urllib.request import Request, urlopen
+
+from .rss_utils import rss_lines
 
 logger = logging.getLogger(__name__)
 
@@ -25,18 +28,11 @@ def _fetch_rss(url: str, timeout: int = 8) -> str | None:
         return None
 
 
-def _parse_rss_titles(xml_text: str, limit: int = 20) -> list[str]:
-    """Extract titles from RSS XML. Basic parser — no heavy deps."""
-    import re
-    titles = re.findall(r"<title>(.*?)</title>", xml_text, re.DOTALL)
-    # Skip the feed title (first <title>)
-    return [
-        t.strip().replace("&amp;", "&").replace("&lt;", "<").replace("&gt;", ">").replace("&#39;", "'")
-        for t in titles[1:limit + 1] if t.strip()
-    ]
+def _parse_rss_titles(xml_text: str, limit: int = 20, *, start_date=None, end_date=None) -> list[str]:
+    return rss_lines(xml_text, limit, start_date=start_date, end_date=end_date)
 
 
-def fetch_google_news(query: str, limit: int = 15, language: str = "en") -> str:
+def fetch_google_news(query: str, limit: int = 15, language: str = "en", *, start_date: str | None = None, end_date: str | None = None) -> str:
     """Fetch news headlines from Google News RSS for a query.
 
     Args:
@@ -55,7 +51,7 @@ def fetch_google_news(query: str, limit: int = 15, language: str = "en") -> str:
     if not xml:
         return ""
 
-    titles = _parse_rss_titles(xml, limit=limit)
+    titles = _parse_rss_titles(xml, limit=limit, start_date=start_date, end_date=end_date)
     if not titles:
         return ""
 
@@ -66,7 +62,7 @@ def fetch_google_news(query: str, limit: int = 15, language: str = "en") -> str:
     return "\n".join(parts)
 
 
-def fetch_google_news_for_ticker(ticker: str, limit: int = 15) -> str:
+def fetch_google_news_for_ticker(ticker: str, limit: int = 15, *, start_date: str | None = None, end_date: str | None = None) -> str:
     """Fetch Google News headlines relevant to a trading ticker.
 
     Tries multiple query variations to get diverse coverage.
@@ -83,13 +79,13 @@ def fetch_google_news_for_ticker(ticker: str, limit: int = 15) -> str:
     ]
 
     for query in queries:
-        result = fetch_google_news(query, limit=5)
+        result = fetch_google_news(query, limit=5, start_date=start_date, end_date=end_date)
         if result:
             # Don't repeat the header for each query
             lines = result.split("\n")
             if lines and lines[0].startswith("###"):
                 lines = lines[1:]
-            all_parts.extend([l for l in lines if l.strip()])
+            all_parts.extend([line for line in lines if line.strip()])
 
     if not all_parts:
         return f"⚠️ Google News: sem resultados para {ticker}."
@@ -98,15 +94,16 @@ def fetch_google_news_for_ticker(ticker: str, limit: int = 15) -> str:
     seen = set()
     unique = []
     for line in all_parts:
+        line = re.sub(r"^\d+\.\s*", "", line)
         if line not in seen:
             seen.add(line)
             unique.append(line)
 
-    header = f"### 📰 Google News para {ticker} ({len(unique)} manchetes)\n"
-    return header + "\n".join(unique[:limit])
+    header = f"### 📰 Google News para {ticker} ({min(len(unique), limit)} manchetes)\n"
+    return header + "\n".join(f"{i}. {line}" for i, line in enumerate(unique[:limit], 1))
 
 
-def fetch_google_news_sentiment(ticker: str, limit: int = 10) -> str:
+def fetch_google_news_sentiment(ticker: str, limit: int = 10, *, start_date: str | None = None, end_date: str | None = None) -> str:
     """Versão PT-PT do fetch de notícias Google News.
 
     Procura em português e inglês para máxima cobertura.
@@ -119,20 +116,20 @@ def fetch_google_news_sentiment(ticker: str, limit: int = 10) -> str:
     queries_en = [f"{ticker} news", f"{base} price analysis"]
 
     for query in queries_pt:
-        result = fetch_google_news(query, limit=3, language="pt")
+        result = fetch_google_news(query, limit=3, language="pt", start_date=start_date, end_date=end_date)
         if result:
             lines = result.split("\n")
             if lines and lines[0].startswith("###"):
                 lines = lines[1:]
-            all_parts.extend([l for l in lines if l.strip()])
+            all_parts.extend([line for line in lines if line.strip()])
 
     for query in queries_en:
-        result = fetch_google_news(query, limit=3, language="en")
+        result = fetch_google_news(query, limit=3, language="en", start_date=start_date, end_date=end_date)
         if result:
             lines = result.split("\n")
             if lines and lines[0].startswith("###"):
                 lines = lines[1:]
-            all_parts.extend([l for l in lines if l.strip()])
+            all_parts.extend([line for line in lines if line.strip()])
 
     if not all_parts:
         return f"⚠️ Google News indisponível para {ticker}."
@@ -140,6 +137,7 @@ def fetch_google_news_sentiment(ticker: str, limit: int = 10) -> str:
     seen = set()
     unique = []
     for line in all_parts:
+        line = re.sub(r"^\d+\.\s*", "", line)
         if line not in seen:
             seen.add(line)
             unique.append(line)

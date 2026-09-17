@@ -12,9 +12,8 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import datetime, timedelta
+from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
-from urllib.error import URLError, HTTPError
 
 logger = logging.getLogger(__name__)
 
@@ -198,8 +197,12 @@ def get_ecb_macro_summary() -> str:
     return "\n".join(parts)
 
 
-def get_ecb_macro_indicators(*args, **kwargs) -> str:
+def get_ecb_macro_indicators(series_id="", curr_date=None, look_back_days=365) -> str:
     """Wrapper compatível com a interface de vendors para dados macro ECB."""
+    from .date_window import withhold_live_profile
+
+    if withhold_live_profile(curr_date, "BCE"):
+        return "Indisponível: BCE atual sem vintage histórico verificado."
     return get_ecb_macro_summary()
 
 

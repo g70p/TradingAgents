@@ -12,12 +12,12 @@ from .alpha_vantage import (
     get_stock as get_alpha_vantage_stock,
 )
 from .config import get_config
+from .ecb_data import get_ecb_macro_indicators
 from .errors import (
     NoMarketDataError,
     VendorNotConfiguredError,
     VendorRateLimitError,
 )
-from .ecb_data import get_ecb_macro_indicators, get_ecb_macro_summary as get_ecb_macro_data
 from .fred import get_macro_data as get_fred_macro_data
 from .polymarket import get_prediction_markets as get_polymarket_prediction_markets
 from .y_finance import (
@@ -30,7 +30,6 @@ from .y_finance import (
     get_YFin_data_online,
 )
 from .yfinance_news import get_global_news_yfinance, get_news_yfinance
-from .portuguese_rss import get_portuguese_news
 
 logger = logging.getLogger(__name__)
 

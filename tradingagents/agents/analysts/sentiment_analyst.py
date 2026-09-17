@@ -57,9 +57,9 @@ def create_sentiment_analyst(llm):
         # returns a string (no exceptions surface from here), so the LLM
         # always sees something — either real data or a clear placeholder.
         news_block = get_news.func(ticker, start_date, end_date)
-        google_block = fetch_google_news_sentiment(ticker, limit=12)
+        google_block = fetch_google_news_sentiment(ticker, limit=12, start_date=start_date, end_date=end_date)
         # Multi-source aggregator as adicional source (Euronext, Investing, CNBC...)
-        extra_block = fetch_news_multi_source(ticker, limit_per_source=4)
+        extra_block = fetch_news_multi_source(ticker, limit_per_source=4, start_date=start_date, end_date=end_date)
 
         system_message = _build_system_message(
             ticker=ticker,

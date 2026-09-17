@@ -63,6 +63,10 @@ class Propagator:
                 }
             ),
             "market_report": "",
+            "math_report": "",
+            "quantitative_results": {},
+            "market_session_context": "",
+            "crypto_onchain_data": "",
             "fundamentals_report": "",
             "sentiment_report": "",
             "news_report": "",

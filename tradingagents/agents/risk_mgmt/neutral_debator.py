@@ -36,6 +36,12 @@ Aqui está o histórico atual da conversa: {history} Aqui está a última respos
 
 Participa ativamente, analisando ambos os lados de forma crítica, abordando as fraquezas nos argumentos agressivo e conservador para defender uma abordagem mais equilibrada. Desafia cada um dos seus pontos para ilustrar por que uma estratégia de risco moderado pode oferecer o melhor dos dois mundos, proporcionando potencial de crescimento enquanto protege contra a volatilidade extrema. Foca-te em debater em vez de simplesmente apresentar dados, procurando mostrar que uma visão equilibrada pode conduzir aos resultados mais fiáveis. Responde de forma conversacional, como se estivesses a falar, sem formatação especial.""" + get_language_instruction()
 
+        prompt += "\nUsa apenas a evidência fornecida; não tens ferramentas externas. "
+        prompt += "Não inventes argumentos anteriores nem escolhas de terceiros. "
+        prompt += "A perspetiva de risco não obriga a uma direção; admite Hold ou REVIEW quando justificado."
+        prompt += "\nQuantitativo:\n" + state.get("math_report", "")
+        if not history.strip():
+            prompt += "\nEsta é a abertura: apresenta argumentos próprios, sem refutar falas inexistentes."
         response = llm.invoke(prompt)
 
         argument = f"Analista Neutro: {response.content}"

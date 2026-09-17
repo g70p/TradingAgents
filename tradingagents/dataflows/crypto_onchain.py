@@ -16,10 +16,9 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import datetime
 from typing import Any
+from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
-from urllib.error import URLError, HTTPError
 
 logger = logging.getLogger(__name__)
 

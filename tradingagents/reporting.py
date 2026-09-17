@@ -29,6 +29,7 @@ def write_report_tree(final_state: dict, ticker: str, save_path) -> Path:
     sentiment = final_state.get("sentiment_report", "")
     news = final_state.get("news_report", "")
     fundamentals = final_state.get("fundamentals_report", "")
+    quantitative = final_state.get("math_report", "")
     trader_plan = final_state.get("trader_investment_plan", "")
 
     debate = final_state.get("investment_debate_state", {}) or {}
@@ -46,6 +47,8 @@ def write_report_tree(final_state: dict, ticker: str, save_path) -> Path:
     prof_msg = final_state.get("professor_message", "")
 
     # Write individual files
+    if quantitative:
+        (save_path / "quantitativo.md").write_text(quantitative, encoding="utf-8")
     if market:
         (save_path / "mercado.md").write_text(market, encoding="utf-8")
     if sentiment:
@@ -92,8 +95,8 @@ def write_report_tree(final_state: dict, ticker: str, save_path) -> Path:
     # 0. Overview
     parts.append("## 0. Visão Geral")
     parts.append("")
-    parts.append(f"| Campo | Valor |")
-    parts.append(f"|---|---|")
+    parts.append("| Campo | Valor |")
+    parts.append("|---|---|")
     parts.append(f"| **Ticker** | {ticker} |")
     parts.append(f"| **Empresa/Ativo** | {company_name} |")
     parts.append(f"| **Bolsa** | {exchange} |")
@@ -125,6 +128,9 @@ def write_report_tree(final_state: dict, ticker: str, save_path) -> Path:
         if research_decision:
             parts.append(f"### Decisão do Gestor de Investigação\n\n{research_decision.strip()}")
             parts.append("")
+
+    if quantitative:
+        parts.append(_section("Análise Quantitativa", quantitative))
 
     # 3. Trading Plan
     if trader_plan:

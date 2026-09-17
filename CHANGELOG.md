@@ -1,3 +1,14 @@
+# G70P 0.4.0 — Codex local (2026-09-17)
+
+- Entrada principal local com dossier de dados e análise na sessão Codex, sem chaves API de IA.
+- SDKs de modelos separados no extra `legacy-api`; novo validador de conclusão.
+- Correções de datas, cache, memória, checkpoints, ATR, Math, Kelly e coerência do Professor.
+- README revisto contra a branch publicada, com instalação Windows/macOS/Linux, migração, resultados e troubleshooting.
+- Alteração de interface: `tradingagents TICKER` prepara o dossier; `tradingagents analyze` pertence à interface antiga. Reinstalar a instalação editável depois de atualizar.
+- Sem alterações na política de execução de ordens: o projeto não executa transações.
+
+## Histórico anterior
+
 # Changelog
 
 All notable changes to TradingAgents are documented here.

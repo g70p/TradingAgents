@@ -70,7 +70,7 @@ class BuildInstrumentContextTests(unittest.TestCase):
     def test_mentions_exact_symbol_without_identity(self):
         context = build_instrument_context("7203.T")
         self.assertIn("7203.T", context)
-        self.assertIn("exchange suffix", context)
+        self.assertIn("sufixo de bolsa", context)
         self.assertNotIn("Resolved identity", context)
 
     def test_injects_resolved_identity(self):
@@ -83,17 +83,17 @@ class BuildInstrumentContextTests(unittest.TestCase):
                 "exchange": "PNK",
             },
         )
-        self.assertIn("Company: TOTO LTD.", context)
+        self.assertIn("Empresa: TOTO LTD.", context)
         self.assertIn("Industrials / Building Products & Equipment", context)
-        self.assertIn("Exchange: PNK", context)
-        self.assertIn("Do not substitute a different company", context)
+        self.assertIn("Bolsa: PNK", context)
+        self.assertIn("Não substituas por uma empresa", context)
 
     def test_crypto_uses_name_label_and_keeps_hint(self):
         context = build_instrument_context(
             "BTC-USD", "crypto", {"company_name": "Bitcoin USD"}
         )
-        self.assertIn("Name: Bitcoin USD", context)
-        self.assertIn("crypto asset rather than a company", context)
+        self.assertIn("Nome: Bitcoin USD", context)
+        self.assertIn("ativo cripto e não como uma empresa", context)
 
 
 @pytest.mark.unit
@@ -115,7 +115,7 @@ class GetInstrumentContextFromStateTests(unittest.TestCase):
         context = get_instrument_context_from_state(
             {"company_of_interest": "BTC-USD", "asset_type": "crypto"}
         )
-        self.assertIn("crypto asset", context)
+        self.assertIn("ativo cripto", context)
 
 
 @pytest.mark.unit

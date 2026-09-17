@@ -221,3 +221,11 @@ __marimo__/
 # Enterprise env file (secrets) and generated run reports
 .env.enterprise
 reports/
+
+# Local validation logs, generated smoke dossiers and disposable environments
+worklog/
+
+# Private local planning and production material
+private/
+docs/YOUTUBE_PRODUCAO.md
+PLANO_CORRECOES.md

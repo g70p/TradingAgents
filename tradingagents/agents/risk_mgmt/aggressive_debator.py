@@ -36,6 +36,12 @@ Aqui está o histórico atual da conversa: {history} Aqui estão os últimos arg
 
 Participa ativamente, respondendo a quaisquer preocupações específicas levantadas, refutando as fraquezas na lógica deles e afirmando os benefícios de assumir riscos para superar as normas do mercado. Mantém o foco em debater e persuadir, não apenas em apresentar dados. Desafia cada contra-argumento para sublinhar por que uma abordagem de alto risco é a ideal. Responde de forma conversacional, como se estivesses a falar, sem formatação especial.""" + get_language_instruction()
 
+        prompt += "\nUsa apenas a evidência fornecida; não tens ferramentas externas. "
+        prompt += "Não inventes argumentos anteriores nem escolhas de terceiros. "
+        prompt += "A perspetiva de risco não obriga a uma direção; admite Hold ou REVIEW quando justificado."
+        prompt += "\nQuantitativo:\n" + state.get("math_report", "")
+        if not history.strip():
+            prompt += "\nEsta é a abertura: apresenta argumentos próprios, sem refutar falas inexistentes."
         response = llm.invoke(prompt)
 
         argument = f"Analista Agressivo: {response.content}"

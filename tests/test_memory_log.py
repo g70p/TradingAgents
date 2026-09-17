@@ -6,7 +6,7 @@ import pandas as pd
 import pytest
 
 from tradingagents.agents.managers.portfolio_manager import create_portfolio_manager
-from tradingagents.agents.schemas import PortfolioDecision, PortfolioRating
+from tradingagents.agents.schemas import PortfolioDecision, PortfolioRating, render_pm_decision
 from tradingagents.agents.utils.memory import TradingMemoryLog
 from tradingagents.graph.propagation import Propagator
 from tradingagents.graph.reflection import Reflector
@@ -54,9 +54,14 @@ def _resolve_entry(log, ticker, date, decision, reflection="Good call."):
     log.update_with_outcome(ticker, date, 0.05, 0.02, 5, reflection)
 
 
-def _price_df(prices):
-    """Minimal DataFrame matching yfinance .history() output shape."""
-    return pd.DataFrame({"Close": prices})
+def _price_df(prices, start="2026-01-05"):
+    """Minimal DataFrame matching yfinance .history() output shape.
+
+    Uses a DatetimeIndex like real yfinance output, so resolution-date
+    extraction (stock.index[holding_days]) works (#1251).
+    """
+    idx = pd.date_range(start=start, periods=len(prices), freq="D")
+    return pd.DataFrame({"Close": prices}, index=idx)
 
 
 def _make_pm_state(past_context=""):
@@ -99,7 +104,7 @@ def _structured_pm_llm(captured: dict, decision: PortfolioDecision | None = None
         captured.__setitem__("prompt", prompt) or decision
     )
     llm = MagicMock()
-    llm.with_structured_output.return_value = structured
+    llm.invoke.side_effect = lambda prompt: (captured.__setitem__("prompt", prompt) or MagicMock(content=render_pm_decision(decision)))
     return llm
 
 
@@ -171,10 +176,10 @@ class TestTradingMemoryLogCore:
         log.store_decision("AAPL", "2026-01-11", DECISION_OVERWEIGHT)
         assert log.load_entries()[0]["rating"] == "Overweight"
 
-    def test_rating_fallback_hold(self, tmp_path):
+    def test_rating_fallback_requires_review(self, tmp_path):
         log = make_log(tmp_path)
         log.store_decision("MSFT", "2026-01-12", DECISION_NO_RATING)
-        assert log.load_entries()[0]["rating"] == "Hold"
+        assert log.load_entries()[0]["rating"] == "REVIEW"
 
     def test_rating_priority_over_prose(self, tmp_path):
         """'Rating: X' label wins even when an opposing rating word appears earlier in prose."""
@@ -490,57 +495,83 @@ class TestDeferredReflection:
         stock_prices = [100.0, 102.0, 104.0, 103.0, 105.0, 106.0]
         spy_prices   = [400.0, 402.0, 404.0, 403.0, 405.0, 406.0]
         mock_graph = MagicMock(spec=TradingAgentsGraph)
+        mock_graph._get_holding_days.return_value = 5
         with patch("yfinance.Ticker") as mock_ticker_cls:
             def _make_ticker(sym):
                 m = MagicMock()
                 m.history.return_value = _price_df(spy_prices if sym == "SPY" else stock_prices)
                 return m
             mock_ticker_cls.side_effect = _make_ticker
-            raw, alpha, days = TradingAgentsGraph._fetch_returns(mock_graph, "NVDA", "2026-01-05")
+            raw, alpha, days, resolved = TradingAgentsGraph._fetch_returns(mock_graph, "NVDA", "2026-01-05")
         assert raw is not None and alpha is not None and days is not None
         assert isinstance(raw, float) and isinstance(alpha, float) and isinstance(days, int)
         assert days == 5
+        # resolution date = the bar `days` sessions after the trade date (#1251)
+        assert resolved == "2026-01-10"
 
     def test_fetch_returns_too_recent(self):
-        """Only 1 data point available → returns (None, None, None), no crash."""
+        """Only 1 data point available → returns all-None, no crash."""
         mock_graph = MagicMock(spec=TradingAgentsGraph)
+        mock_graph._get_holding_days.return_value = 5
         with patch("yfinance.Ticker") as mock_ticker_cls:
             m = MagicMock()
             m.history.return_value = _price_df([100.0])
             mock_ticker_cls.return_value = m
-            raw, alpha, days = TradingAgentsGraph._fetch_returns(mock_graph, "NVDA", "2026-04-19")
-        assert raw is None and alpha is None and days is None
+            raw, alpha, days, resolved = TradingAgentsGraph._fetch_returns(mock_graph, "NVDA", "2026-04-19")
+        assert (raw, alpha, days, resolved) == (None, None, None, None)
 
     def test_fetch_returns_delisted(self):
-        """Empty DataFrame → returns (None, None, None), no crash."""
+        """Empty DataFrame → returns all-None, no crash."""
         mock_graph = MagicMock(spec=TradingAgentsGraph)
+        mock_graph._get_holding_days.return_value = 5
         with patch("yfinance.Ticker") as mock_ticker_cls:
             m = MagicMock()
             m.history.return_value = pd.DataFrame({"Close": []})
             mock_ticker_cls.return_value = m
-            raw, alpha, days = TradingAgentsGraph._fetch_returns(mock_graph, "XXXXXFAKE", "2026-01-10")
-        assert raw is None and alpha is None and days is None
+            raw, alpha, days, resolved = TradingAgentsGraph._fetch_returns(mock_graph, "XXXXXFAKE", "2026-01-10")
+        assert (raw, alpha, days, resolved) == (None, None, None, None)
 
     def test_fetch_returns_spy_shorter_than_stock(self):
-        """SPY having fewer rows than the stock must not raise IndexError."""
-        stock_prices = [100.0, 102.0, 104.0, 103.0, 105.0, 106.0]
-        spy_prices   = [400.0, 402.0, 403.0]
+        """SPY having fewer rows than the stock (but still a full window) must
+        not raise IndexError."""
+        stock_prices = [100.0, 102.0, 104.0, 103.0, 105.0, 106.0, 107.0, 108.0]  # 8 rows
+        spy_prices   = [400.0, 402.0, 403.0, 405.0, 406.0, 407.0]                # 6 rows
         mock_graph = MagicMock(spec=TradingAgentsGraph)
+        mock_graph._get_holding_days.return_value = 5
         with patch("yfinance.Ticker") as mock_ticker_cls:
             def _make_ticker(sym):
                 m = MagicMock()
                 m.history.return_value = _price_df(spy_prices if sym == "SPY" else stock_prices)
                 return m
             mock_ticker_cls.side_effect = _make_ticker
-            raw, alpha, days = TradingAgentsGraph._fetch_returns(mock_graph, "NVDA", "2026-01-05")
-        assert raw is not None and alpha is not None and days is not None
-        assert days == 2
+            raw, alpha, days, resolved = TradingAgentsGraph._fetch_returns(mock_graph, "NVDA", "2026-01-05")
+        assert raw is not None and alpha is not None
+        assert days == 5  # full holding window used for both series
+        assert resolved == "2026-01-10"
+
+    def test_fetch_returns_incomplete_window_stays_pending(self):
+        """#1169: a rerun before the full holding window has traded returns
+        unavailable (all-None) so the entry stays pending, rather than settling
+        on a premature partial return."""
+        stock_prices = [100.0, 102.0, 104.0]  # only 3 rows; holding window is 5
+        spy_prices   = [400.0, 402.0, 404.0]
+        mock_graph = MagicMock(spec=TradingAgentsGraph)
+        mock_graph._get_holding_days.return_value = 5
+        with patch("yfinance.Ticker") as mock_ticker_cls:
+            def _make_ticker(sym):
+                m = MagicMock()
+                m.history.return_value = _price_df(spy_prices if sym == "SPY" else stock_prices)
+                return m
+            mock_ticker_cls.side_effect = _make_ticker
+            result = TradingAgentsGraph._fetch_returns(mock_graph, "NVDA", "2026-01-05")
+        assert result == (None, None, None, None)
 
     # TradingAgentsGraph._resolve_benchmark — picks index for alpha calc
 
     def test_resolve_benchmark_explicit_override(self):
         """config['benchmark_ticker'] wins for every ticker."""
         mock_graph = MagicMock(spec=TradingAgentsGraph)
+        mock_graph._get_holding_days.return_value = 5
         mock_graph.config = {
             "benchmark_ticker": "QQQ",
             "benchmark_map": {"": "SPY", ".T": "^N225"},
@@ -551,6 +582,7 @@ class TestDeferredReflection:
     def test_resolve_benchmark_suffix_map(self):
         """Known suffixes route to their regional index."""
         mock_graph = MagicMock(spec=TradingAgentsGraph)
+        mock_graph._get_holding_days.return_value = 5
         mock_graph.config = {
             "benchmark_ticker": None,
             "benchmark_map": {
@@ -569,6 +601,7 @@ class TestDeferredReflection:
         default benchmark_map, since A-share support relies on it)."""
         from tradingagents.default_config import DEFAULT_CONFIG
         mock_graph = MagicMock(spec=TradingAgentsGraph)
+        mock_graph._get_holding_days.return_value = 5
         mock_graph.config = {"benchmark_ticker": None,
                              "benchmark_map": DEFAULT_CONFIG["benchmark_map"]}
         assert TradingAgentsGraph._resolve_benchmark(mock_graph, "600519.SS") == "000001.SS"
@@ -577,6 +610,7 @@ class TestDeferredReflection:
     def test_resolve_benchmark_us_ticker_defaults_to_spy(self):
         """US tickers (no dotted suffix) take the empty-suffix entry."""
         mock_graph = MagicMock(spec=TradingAgentsGraph)
+        mock_graph._get_holding_days.return_value = 5
         mock_graph.config = {
             "benchmark_ticker": None,
             "benchmark_map": {"": "SPY", ".T": "^N225"},
@@ -587,6 +621,7 @@ class TestDeferredReflection:
     def test_resolve_benchmark_unknown_suffix_falls_back(self):
         """Unrecognised suffix (BRK.B, FAKE.XX) falls back to SPY."""
         mock_graph = MagicMock(spec=TradingAgentsGraph)
+        mock_graph._get_holding_days.return_value = 5
         mock_graph.config = {
             "benchmark_ticker": None,
             "benchmark_map": {"": "SPY", ".T": "^N225"},
@@ -597,6 +632,7 @@ class TestDeferredReflection:
     def test_resolve_benchmark_case_insensitive(self):
         """Suffix matching is case-insensitive so 7203.t resolves like 7203.T."""
         mock_graph = MagicMock(spec=TradingAgentsGraph)
+        mock_graph._get_holding_days.return_value = 5
         mock_graph.config = {
             "benchmark_ticker": None,
             "benchmark_map": {".T": "^N225", "": "SPY"},
@@ -640,8 +676,9 @@ class TestDeferredReflection:
         log = make_log(tmp_path)
         log.store_decision("AAPL", "2026-01-10", DECISION_BUY)
         mock_graph = MagicMock(spec=TradingAgentsGraph)
+        mock_graph._get_holding_days.return_value = 5
         mock_graph.memory_log = log
-        mock_graph._fetch_returns = MagicMock(return_value=(0.05, 0.02, 5))
+        mock_graph._fetch_returns = MagicMock(return_value=(0.05, 0.02, 5, "2026-01-12"))
         TradingAgentsGraph._resolve_pending_entries(mock_graph, "NVDA")
         mock_graph._fetch_returns.assert_not_called()
         assert len(log.get_pending_entries()) == 1
@@ -653,9 +690,10 @@ class TestDeferredReflection:
         mock_reflector = MagicMock()
         mock_reflector.reflect_on_final_decision.return_value = "Momentum confirmed."
         mock_graph = MagicMock(spec=TradingAgentsGraph)
+        mock_graph._get_holding_days.return_value = 5
         mock_graph.memory_log = log
         mock_graph.reflector = mock_reflector
-        mock_graph._fetch_returns = MagicMock(return_value=(0.05, 0.02, 5))
+        mock_graph._fetch_returns = MagicMock(return_value=(0.05, 0.02, 5, "2026-01-12"))
         TradingAgentsGraph._resolve_pending_entries(mock_graph, "NVDA")
         assert log.get_pending_entries() == []
         entries = log.load_entries()
@@ -664,6 +702,21 @@ class TestDeferredReflection:
         assert entries[0]["reflection"] == "Momentum confirmed."
         assert "+5.0%" in entries[0]["raw"]
         assert "+2.0%" in entries[0]["alpha"]
+
+    def test_resolve_leaves_premature_entry_pending(self, tmp_path):
+        """#1169: when the outcome can't be settled yet (_fetch_returns None),
+        the entry stays pending and the reflector is never called."""
+        log = make_log(tmp_path)
+        log.store_decision("NVDA", "2026-01-05", DECISION_BUY)
+        mock_reflector = MagicMock()
+        mock_graph = MagicMock(spec=TradingAgentsGraph)
+        mock_graph._get_holding_days.return_value = 5
+        mock_graph.memory_log = log
+        mock_graph.reflector = mock_reflector
+        mock_graph._fetch_returns = MagicMock(return_value=(None, None, None, None))
+        TradingAgentsGraph._resolve_pending_entries(mock_graph, "NVDA")
+        assert len(log.get_pending_entries()) == 1  # still pending
+        mock_reflector.reflect_on_final_decision.assert_not_called()
 
 
 # ---------------------------------------------------------------------------
@@ -693,7 +746,7 @@ class TestPortfolioManagerInjection:
         pm_node = create_portfolio_manager(llm)
         state = _make_pm_state(past_context="[2026-01-05 | NVDA | Buy | +5.0% | +2.0% | 5d]\nGreat call.")
         pm_node(state)
-        assert "Lessons from prior decisions and outcomes" in captured["prompt"]
+        assert "Lições de decisões e resultados anteriores" in captured["prompt"]
         assert "Great call." in captured["prompt"]
 
     def test_pm_no_past_context_no_section(self):
@@ -703,7 +756,7 @@ class TestPortfolioManagerInjection:
         pm_node = create_portfolio_manager(llm)
         state = _make_pm_state(past_context="")
         pm_node(state)
-        assert "Lessons from prior decisions" not in captured["prompt"]
+        assert "Lições de decisões" not in captured["prompt"]
 
     def test_pm_returns_rendered_markdown_with_rating(self):
         """The structured PortfolioDecision is rendered to markdown that
@@ -721,11 +774,11 @@ class TestPortfolioManagerInjection:
         pm_node = create_portfolio_manager(llm)
         result = pm_node(_make_pm_state())
         md = result["final_trade_decision"]
-        assert "**Rating**: Overweight" in md
-        assert "**Executive Summary**: Build position gradually" in md
-        assert "**Investment Thesis**: AI capex cycle" in md
-        assert "**Price Target**: 215.0" in md
-        assert "**Time Horizon**: 3-6 months" in md
+        assert "**Classificação**: Overweight" in md
+        assert "**Sumário Executivo**: Build position gradually" in md
+        assert "**Tese de Investimento**: AI capex cycle" in md
+        assert "**Preço-Alvo**: 215.0" in md
+        assert "**Horizonte Temporal**: 3-6 months" in md
 
     def test_pm_falls_back_to_freetext_when_structured_unavailable(self):
         """If a provider does not support with_structured_output, the agent

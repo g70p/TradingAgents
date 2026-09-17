@@ -5,7 +5,6 @@ from tradingagents.agents.utils.report_consolidator import consolidate_analyst_r
 from tradingagents.agents.utils.volume_framework import VOLUME_FRAMEWORK
 
 
-
 def create_bull_researcher(llm):
     def bull_node(state) -> dict:
         investment_debate_state = state["investment_debate_state"]
@@ -25,11 +24,12 @@ def create_bull_researcher(llm):
             fundamentals_report=state.get("fundamentals_report", ""),
             ticker=ticker,
             trade_date=trade_date,
+            math_report=state.get("math_report", ""),
         )
 
         prompt = f"""És um Analista Touro (Bull) a defender o investimento na {target_label}. A tua tarefa é construir um caso forte, baseado em evidências, que enfatize o potencial de crescimento, vantagens competitivas e indicadores de mercado positivos.
 
-Recebeste um RELATÓRIO CONSOLIDADO que unifica as análises de 4 especialistas independentes. Usa-o como a tua única fonte de dados.
+Recebeste um RELATÓRIO CONSOLIDADO que unifica as análises de especialistas selecionados. Usa-o como a tua única fonte de dados.
 
 Estrutura da tua resposta (obrigatório):
 
@@ -73,6 +73,8 @@ O que o Urso e o Gestor de Investigação precisam de saber.
 Usa esta informação para apresentar um argumento bull convincente, refutar as preocupações do urso e participar num debate dinâmico.
 """ + VOLUME_FRAMEWORK + get_language_instruction()
 
+        if not history.strip():
+            prompt += "\nEsta é a abertura do debate. Apresenta o teu caso; não inventes argumentos anteriores."
         response = llm.invoke(prompt)
 
         argument = f"Analista Touro:\n{response.content}"

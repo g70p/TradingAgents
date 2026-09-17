@@ -36,6 +36,12 @@ Aqui está o histórico atual da conversa: {history} Aqui está a última respos
 
 Participa ativamente, questionando o otimismo deles e enfatizando as potenciais desvantagens que podem ter ignorado. Responde a cada um dos seus contra-argumentos para demonstrar por que uma posição conservadora é, em última análise, o caminho mais seguro para os ativos da empresa. Foca-te em debater e criticar os argumentos deles para demonstrar a força de uma estratégia de baixo risco sobre as suas abordagens. Responde de forma conversacional, como se estivesses a falar, sem formatação especial.""" + get_language_instruction()
 
+        prompt += "\nUsa apenas a evidência fornecida; não tens ferramentas externas. "
+        prompt += "Não inventes argumentos anteriores nem escolhas de terceiros. "
+        prompt += "A perspetiva de risco não obriga a uma direção; admite Hold ou REVIEW quando justificado."
+        prompt += "\nQuantitativo:\n" + state.get("math_report", "")
+        if not history.strip():
+            prompt += "\nEsta é a abertura: apresenta argumentos próprios, sem refutar falas inexistentes."
         response = llm.invoke(prompt)
 
         argument = f"Analista Conservador: {response.content}"

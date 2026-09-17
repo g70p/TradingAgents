@@ -38,11 +38,11 @@ class TestRenderTraderProposal:
     def test_minimal_required_fields(self):
         p = TraderProposal(action=TraderAction.HOLD, reasoning="Balanced setup; no edge.")
         md = render_trader_proposal(p)
-        assert "**Action**: Hold" in md
-        assert "**Reasoning**: Balanced setup; no edge." in md
-        # The trailing FINAL TRANSACTION PROPOSAL line is preserved for the
+        assert "**Ação**: Hold" in md
+        assert "**Raciocínio**: Balanced setup; no edge." in md
+        # The trailing PROPOSTA FINAL DE TRANSAÇÃO line is preserved for the
         # analyst stop-signal text and any external code that greps for it.
-        assert "FINAL TRANSACTION PROPOSAL: **HOLD**" in md
+        assert "PROPOSTA FINAL DE TRANSAÇÃO: **HOLD**" in md
 
     def test_optional_fields_included_when_present(self):
         p = TraderProposal(
@@ -53,11 +53,11 @@ class TestRenderTraderProposal:
             position_sizing="6% of portfolio",
         )
         md = render_trader_proposal(p)
-        assert "**Action**: Buy" in md
-        assert "**Entry Price**: 189.5" in md
+        assert "**Ação**: Buy" in md
+        assert "**Preço de Entrada**: 189.5" in md
         assert "**Stop Loss**: 178.0" in md
-        assert "**Position Sizing**: 6% of portfolio" in md
-        assert "FINAL TRANSACTION PROPOSAL: **BUY**" in md
+        assert "**Dimensionamento de Posição**: 6% of portfolio" in md
+        assert "PROPOSTA FINAL DE TRANSAÇÃO: **BUY**" in md
 
     def test_optional_fields_omitted_when_absent(self):
         p = TraderProposal(action=TraderAction.SELL, reasoning="Guidance cut.")
@@ -65,7 +65,7 @@ class TestRenderTraderProposal:
         assert "Entry Price" not in md
         assert "Stop Loss" not in md
         assert "Position Sizing" not in md
-        assert "FINAL TRANSACTION PROPOSAL: **SELL**" in md
+        assert "PROPOSTA FINAL DE TRANSAÇÃO: **SELL**" in md
 
 
 @pytest.mark.unit
@@ -107,9 +107,9 @@ class TestRenderResearchPlan:
             strategic_actions="Build position over two weeks; cap at 5%.",
         )
         md = render_research_plan(p)
-        assert "**Recommendation**: Overweight" in md
-        assert "**Rationale**: Bull case carried" in md
-        assert "**Strategic Actions**: Build position" in md
+        assert "**Recomendação**: Overweight" in md
+        assert "**Fundamentação**: Bull case carried" in md
+        assert "**Ações Estratégicas**: Build position" in md
 
     def test_all_5_tier_ratings_render(self):
         for rating in PortfolioRating:
@@ -119,7 +119,7 @@ class TestRenderResearchPlan:
                 strategic_actions="s",
             )
             md = render_research_plan(p)
-            assert f"**Recommendation**: {rating.value}" in md
+            assert f"**Recomendação**: {rating.value}" in md
 
 
 # ---------------------------------------------------------------------------
@@ -130,7 +130,8 @@ class TestRenderResearchPlan:
 def _make_trader_state():
     return {
         "company_of_interest": "NVDA",
-        "investment_plan": "**Recommendation**: Buy\n**Rationale**: ...\n**Strategic Actions**: ...",
+        "trade_date": "2025-05-20",
+        "investment_plan": "**Recomendação**: Buy\n**Fundamentação**: ...\n**Ações Estratégicas**: ...",
     }
 
 
@@ -148,7 +149,7 @@ def _structured_trader_llm(captured: dict, proposal: TraderProposal | None = Non
         captured.__setitem__("prompt", prompt) or proposal
     )
     llm = MagicMock()
-    llm.with_structured_output.return_value = structured
+    llm.invoke.side_effect = lambda prompt: (captured.__setitem__("prompt", prompt) or MagicMock(content=render_trader_proposal(proposal)))
     return llm
 
 
@@ -172,7 +173,12 @@ def test_invoke_structured_falls_back_when_result_is_none():
 
 @pytest.mark.unit
 class TestTraderAgent:
-    def test_structured_path_produces_rendered_markdown(self):
+    @pytest.fixture(autouse=True)
+    def _stub_atr(self, monkeypatch):
+        from tradingagents.agents.trader import trader as module
+        monkeypatch.setattr(module, "get_atr_position_sizing", MagicMock())
+
+    def test_plain_response_preserves_markdown(self):
         captured = {}
         proposal = TraderProposal(
             action=TraderAction.BUY,
@@ -185,9 +191,9 @@ class TestTraderAgent:
         trader = create_trader(llm)
         result = trader(_make_trader_state())
         plan = result["trader_investment_plan"]
-        assert "**Action**: Buy" in plan
-        assert "**Entry Price**: 189.5" in plan
-        assert "FINAL TRANSACTION PROPOSAL: **BUY**" in plan
+        assert "**Ação**: Buy" in plan
+        assert "**Preço de Entrada**: 189.5" in plan
+        assert "PROPOSTA FINAL DE TRANSAÇÃO: **BUY**" in plan
         # The same rendered markdown is also added to messages for downstream agents.
         assert plan in result["messages"][0].content
 
@@ -198,12 +204,12 @@ class TestTraderAgent:
         trader(_make_trader_state())
         # The investment plan is in the user message of the captured prompt.
         prompt = captured["prompt"]
-        assert any("Proposed Investment Plan" in m["content"] for m in prompt)
+        assert any("Plano de Investimento Proposto" in m["content"] for m in prompt)
 
     def test_falls_back_to_freetext_when_structured_unavailable(self):
         plain_response = (
-            "**Action**: Sell\n\nGuidance cut hits margins.\n\n"
-            "FINAL TRANSACTION PROPOSAL: **SELL**"
+            "**Ação**: Sell\n\nGuidance cut hits margins.\n\n"
+            "PROPOSTA FINAL DE TRANSAÇÃO: **SELL**"
         )
         llm = MagicMock()
         llm.with_structured_output.side_effect = NotImplementedError("provider unsupported")
@@ -221,6 +227,7 @@ class TestTraderAgent:
 def _make_rm_state():
     return {
         "company_of_interest": "NVDA",
+        "trade_date": "2025-05-20",
         "investment_debate_state": {
             "history": "Bull and bear arguments here.",
             "bull_history": "Bull says...",
@@ -244,13 +251,13 @@ def _structured_rm_llm(captured: dict, plan: ResearchPlan | None = None):
         captured.__setitem__("prompt", prompt) or plan
     )
     llm = MagicMock()
-    llm.with_structured_output.return_value = structured
+    llm.invoke.side_effect = lambda prompt: (captured.__setitem__("prompt", prompt) or MagicMock(content=render_research_plan(plan)))
     return llm
 
 
 @pytest.mark.unit
 class TestResearchManagerAgent:
-    def test_structured_path_produces_rendered_markdown(self):
+    def test_plain_response_preserves_markdown(self):
         captured = {}
         plan = ResearchPlan(
             recommendation=PortfolioRating.OVERWEIGHT,
@@ -261,9 +268,9 @@ class TestResearchManagerAgent:
         rm = create_research_manager(llm)
         result = rm(_make_rm_state())
         ip = result["investment_plan"]
-        assert "**Recommendation**: Overweight" in ip
-        assert "**Rationale**: Bull case" in ip
-        assert "**Strategic Actions**: Build position" in ip
+        assert "**Recomendação**: Overweight" in ip
+        assert "**Fundamentação**: Bull case" in ip
+        assert "**Ações Estratégicas**: Build position" in ip
 
     def test_prompt_uses_5_tier_rating_scale(self):
         """The RM prompt must list all five tiers so the schema enum matches user expectations."""
@@ -272,11 +279,11 @@ class TestResearchManagerAgent:
         rm = create_research_manager(llm)
         rm(_make_rm_state())
         prompt = captured["prompt"]
-        for tier in ("Buy", "Overweight", "Hold", "Underweight", "Sell"):
+        for tier in ("Comprar", "Sobreponderar", "Manter", "Subponderar", "Vender"):
             assert f"**{tier}**" in prompt, f"missing {tier} in prompt"
 
     def test_falls_back_to_freetext_when_structured_unavailable(self):
-        plain_response = "**Recommendation**: Sell\n\n**Rationale**: ...\n\n**Strategic Actions**: ..."
+        plain_response = "**Recomendação**: Sell\n\n**Fundamentação**: ...\n\n**Ações Estratégicas**: ..."
         llm = MagicMock()
         llm.with_structured_output.side_effect = NotImplementedError("provider unsupported")
         llm.invoke.return_value = MagicMock(content=plain_response)
@@ -300,8 +307,8 @@ class TestRenderSentimentReport:
             narrative="Source breakdown here.",
         )
         md = render_sentiment_report(report)
-        assert "**Overall Sentiment:** **Bullish**" in md
-        assert "(Score: 7.2/10)" in md
+        assert "**Sentimento Geral:** **Bullish**" in md
+        assert "(Pontuação: 7.2/10)" in md
 
     def test_header_contains_confidence(self):
         report = SentimentReport(
@@ -310,7 +317,7 @@ class TestRenderSentimentReport:
             confidence="low",
             narrative="Limited data.",
         )
-        assert "**Confidence:** Low" in render_sentiment_report(report)
+        assert "**Confiança:** Low" in render_sentiment_report(report)
 
     def test_narrative_preserved_in_output(self):
         narrative = "## Breakdown\n\nStockTwits: 70% bullish.\n\n| Signal | Direction |\n|---|---|\n| News | Neutral |"
@@ -361,13 +368,21 @@ def _structured_sentiment_llm(captured: dict, report: SentimentReport | None = N
         captured.__setitem__("prompt", prompt) or report
     )
     llm = MagicMock()
-    llm.with_structured_output.return_value = structured
+    llm.invoke.side_effect = lambda prompt: (captured.__setitem__("prompt", prompt) or MagicMock(content=render_sentiment_report(report)))
     return llm
 
 
 @pytest.mark.unit
 class TestSentimentAnalystAgent:
-    def test_structured_path_produces_rendered_markdown(self):
+    @pytest.fixture(autouse=True)
+    def _stub_prefetched_sources(self, monkeypatch):
+        from tradingagents.agents.analysts import sentiment_analyst as sentiment
+
+        monkeypatch.setattr(sentiment, "fetch_google_news_sentiment", lambda *a, **k: "news")
+        monkeypatch.setattr(sentiment, "fetch_news_multi_source", lambda *a, **k: "rss")
+        monkeypatch.setattr(sentiment.get_news, "func", lambda *a, **k: "news")
+
+    def test_plain_response_preserves_markdown(self):
         captured = {}
         report = SentimentReport(
             overall_band=SentimentBand.MILDLY_BEARISH, overall_score=4.0,
@@ -375,8 +390,8 @@ class TestSentimentAnalystAgent:
         )
         analyst = create_sentiment_analyst(_structured_sentiment_llm(captured, report))
         sr = analyst(_make_sentiment_state())["sentiment_report"]
-        assert "**Overall Sentiment:** **Mildly Bearish**" in sr
-        assert "(Score: 4.0/10)" in sr
+        assert "**Sentimento Geral:** **Mildly Bearish**" in sr
+        assert "(Pontuação: 4.0/10)" in sr
         assert "Mixed signals across sources." in sr
 
     def test_sentiment_report_also_in_messages(self):
@@ -392,7 +407,7 @@ class TestSentimentAnalystAgent:
         assert any("NVDA" in str(m) for m in captured["prompt"])
 
     def test_falls_back_to_freetext_when_structured_unavailable(self):
-        plain = "**Overall Sentiment:** **Bearish** (Score: 3.0/10)\n**Confidence:** Low\n\nLimited data."
+        plain = "**Sentimento Geral:** **Bearish** (Pontuação: 3.0/10)\n**Confiança:** Low\n\nLimited data."
         llm = MagicMock()
         llm.with_structured_output.side_effect = NotImplementedError("provider unsupported")
         llm.invoke.return_value = MagicMock(content=plain)

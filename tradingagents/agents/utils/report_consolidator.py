@@ -18,6 +18,7 @@ def consolidate_analyst_reports(
     fundamentals_report: str,
     ticker: str,
     trade_date: str,
+    math_report: str = "",
 ) -> str:
     """Merge four analyst reports into a single AVA-structured document.
 
@@ -34,8 +35,8 @@ def consolidate_analyst_reports(
     sections.append("## 1. Visão Geral")
     sections.append("")
     sections.append(
-        f"Documento unificado que agrega as análises independentes de 4 especialistas "
-        f"(Técnico, Sentimento, Notícias/Macro, Fundamental) sobre **{ticker}** "
+        f"Documento unificado que agrega as análises independentes de especialistas selecionados "
+        f"(Técnico, Sentimento, Notícias/Macro, Fundamental e Quantitativo) sobre **{ticker}** "
         f"na data de **{trade_date}**. Cada analista trabalhou isoladamente com "
         f"as suas ferramentas especializadas. Este documento serve como base para "
         f"o debate Bull vs Bear e a decisão final de trading."
@@ -75,17 +76,18 @@ def consolidate_analyst_reports(
         ("4. Análise de Sentimento (Analista de Sentimento)", sentiment_report),
         ("5. Análise de Notícias e Macro (Analista de Notícias)", news_report),
         ("6. Análise Fundamental (Analista de Fundamentais)", fundamentals_report),
+        ("7. Análise Quantitativa (Math)", math_report),
     ]
 
     for title, content in reports:
-        if content and content.strip() and "indisponível" not in content[:50].lower():
+        if content and content.strip():
             sections.append(f"## {title}")
             sections.append("")
             sections.append(content.strip())
             sections.append("")
 
     # ── 7. Gate de Validação da Consolidação ─────────────────────────
-    sections.append("## 7. Gate de Validação")
+    sections.append("## 8. Gate de Validação")
     sections.append("")
     sections.append("Antes de avançar para o debate Bull vs Bear, verifica:")
     for r in reports:
